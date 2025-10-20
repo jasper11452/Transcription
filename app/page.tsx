@@ -1,4 +1,5 @@
 import TranscriptionForm from './components/TranscriptionForm';
+import ServerInfo from './components/ServerInfo';
 
 export default function Home() {
   return (
@@ -6,6 +7,7 @@ export default function Home() {
       <div className="mx-auto max-w-3xl space-y-6">
         <h1 className="text-3xl font-bold">音频转写演示</h1>
         <p className="text-gray-600">上传音频/视频文件，调用后端 /api/transcribe 接口进行转写。</p>
+        <ServerInfo />
         <TranscriptionForm />
       </div>
     </main>

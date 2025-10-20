@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES } from "../../lib/constants";
 
 type ApiResponse =
@@ -10,6 +10,13 @@ type ApiResponse =
       metadata: Record<string, unknown>;
     };
 
+type ServerInfo = {
+  status: string;
+  maxUploadMB: number;
+  rateLimitRPM: number;
+  allowed: { mimeTypes: string[]; extensions: string[] };
+};
+
 export default function TranscriptionForm() {
   const [file, setFile] = useState<File | null>(null);
   const [language, setLanguage] = useState("");
@@ -17,17 +24,46 @@ export default function TranscriptionForm() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiResponse | null>(null);
+  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/transcribe", { method: "GET", cache: "no-store" });
+        const data = (await res.json()) as ServerInfo | { error: string };
+        if (!alive) return;
+        if ("error" in data) return;
+        setServerInfo(data);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const accept = useMemo(() => {
-    const mimes = Array.from(ALLOWED_MIME_TYPES);
-    const exts = Array.from(ALLOWED_EXTENSIONS);
+    const mimes = serverInfo?.allowed?.mimeTypes ?? Array.from(ALLOWED_MIME_TYPES);
+    const exts = serverInfo?.allowed?.extensions ?? Array.from(ALLOWED_EXTENSIONS);
     return [...mimes, ...exts].join(",");
-  }, []);
+  }, [serverInfo]);
+
+  const maxUploadMB = serverInfo?.maxUploadMB ?? 100;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setResult(null);
     if (!file) return;
+
+    // client-side size guard for better UX
+    const maxBytes = maxUploadMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setResult({ error: `文件过大，最大支持 ${maxUploadMB} MB` });
+      return;
+    }
+
     setLoading(true);
     try {
       const fd = new FormData();
@@ -59,6 +95,7 @@ export default function TranscriptionForm() {
           required
         />
         <p className="text-xs text-gray-500 mt-1">支持: {accept}</p>
+        <p className="text-xs text-gray-500 mt-1">最大上传大小：{maxUploadMB} MB</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
