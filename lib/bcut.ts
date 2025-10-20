@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { config } from './config';
 
 export type BcutTranscribeOptions = {
   language?: string | null;
@@ -28,31 +29,25 @@ export type BcutTranscribeResult = {
   };
 };
 
-function getEnv(name: string, fallback?: string): string {
-  const v = process.env[name];
-  if (v == null || v === '') {
-    if (fallback !== undefined) return fallback;
-    throw new Error(`Missing required env var: ${name}`);
-  }
-  return v;
-}
 
-function getOptionalEnv(name: string, fallback?: string): string | undefined {
-  const v = process.env[name];
-  if (v == null || v === '') return fallback;
-  return v;
-}
 
 export async function bcutTranscribe(input: BcutTranscribeInput): Promise<BcutTranscribeResult> {
   const { buffer, filename, mimeType, options } = input;
 
-  const baseUrl = getEnv('BCUT_BASE_URL');
-  const apiKey = getEnv('BCUT_API_KEY');
-  const path = getOptionalEnv('BCUT_TRANSCRIBE_PATH', '/v1/transcribe')!;
-  const timeoutMs = options?.timeoutMs ?? Number(getOptionalEnv('BCUT_TIMEOUT_MS', '120000'));
-  const language = options?.language ?? getOptionalEnv('BCUT_LANGUAGE');
-  const model = options?.model ?? getOptionalEnv('BCUT_MODEL');
-  const prompt = options?.prompt ?? getOptionalEnv('BCUT_PROMPT');
+  const baseUrl = config.bcut.baseUrl;
+  const apiKey = config.bcut.apiKey;
+  const path = config.bcut.transcribePath;
+  const timeoutMs = options?.timeoutMs ?? config.bcut.timeoutMs;
+  const language = options?.language ?? config.bcut.language;
+  const model = options?.model ?? config.bcut.model;
+  const prompt = options?.prompt ?? config.bcut.prompt;
+
+  if (!baseUrl) {
+    throw new Error('Missing required env var: BCUT_BASE_URL');
+  }
+  if (!apiKey) {
+    throw new Error('Missing required env var: BCUT_API_KEY');
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -80,27 +75,57 @@ export async function bcutTranscribe(input: BcutTranscribeInput): Promise<BcutTr
 
     const contentType = res.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
-    const raw = isJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
+    const raw: unknown = isJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
 
     if (!res.ok) {
-      const message = isJson && raw && typeof raw === 'object' && 'message' in raw ? (raw as any).message : res.statusText;
-      const err = new Error(`BCut API error: ${res.status} ${message}`);
-      (err as any).response = raw;
+      let message = res.statusText;
+      if (isJson && raw && typeof raw === 'object' && 'message' in raw) {
+        const m = (raw as Record<string, unknown>).message;
+        if (typeof m === 'string') message = m;
+      }
+      type BcutError = Error & { response?: unknown };
+      const err: BcutError = new Error(`BCut API error: ${res.status} ${message}`);
+      err.response = raw;
       throw err;
     }
 
-    const data = raw as any;
-    const text: string = (data?.text as string) ?? (data?.transcript as string) ?? '';
+    const data = raw as Record<string, unknown> | string | null;
+    let text = '';
+    if (data && typeof data === 'object') {
+      const t = (data as Record<string, unknown>).text;
+      const tr = (data as Record<string, unknown>).transcript;
+      if (typeof t === 'string') text = t;
+      else if (typeof tr === 'string') text = tr;
+    }
 
     return {
       text,
       metadata: {
         provider: 'bcut',
-        jobId: (data?.job_id as string) ?? (data?.id as string),
-        language: (data?.language as string) ?? language ?? undefined,
-        duration: typeof data?.duration === 'number' ? (data.duration as number) : undefined,
-        model: (data?.model as string) ?? model ?? undefined,
-        confidence: typeof data?.confidence === 'number' ? (data.confidence as number) : undefined,
+        jobId:
+          data && typeof data === 'object'
+            ? (typeof (data as Record<string, unknown>).job_id === 'string'
+                ? ((data as Record<string, unknown>).job_id as string)
+                : typeof (data as Record<string, unknown>).id === 'string'
+                ? ((data as Record<string, unknown>).id as string)
+                : undefined)
+            : undefined,
+        language:
+          (data && typeof data === 'object' && typeof (data as Record<string, unknown>).language === 'string'
+            ? ((data as Record<string, unknown>).language as string)
+            : language) ?? undefined,
+        duration:
+          data && typeof data === 'object' && typeof (data as Record<string, unknown>).duration === 'number'
+            ? ((data as Record<string, unknown>).duration as number)
+            : undefined,
+        model:
+          (data && typeof data === 'object' && typeof (data as Record<string, unknown>).model === 'string'
+            ? ((data as Record<string, unknown>).model as string)
+            : model) ?? undefined,
+        confidence:
+          data && typeof data === 'object' && typeof (data as Record<string, unknown>).confidence === 'number'
+            ? ((data as Record<string, unknown>).confidence as number)
+            : undefined,
         raw: data,
       },
     };
