@@ -32,6 +32,18 @@ function isRateLimited(req: Request): boolean {
     }
     if (now - bucket.windowStart > RATE_LIMIT_WINDOW_MS) {
       rateBuckets.set(ip, { windowStart: now, count: 1 });
+
+      // Clean up old entries to prevent memory leak
+      // Only run cleanup if we have too many buckets
+      if (rateBuckets.size > 1000) {
+        const staleThreshold = now - RATE_LIMIT_WINDOW_MS * 5; // 5 minutes old
+        rateBuckets.forEach((value, key) => {
+          if (value.windowStart < staleThreshold) {
+            rateBuckets.delete(key);
+          }
+        });
+      }
+
       return false;
     }
     if (bucket.count >= RATE_LIMIT_RPM) return true;
@@ -101,8 +113,15 @@ export async function POST(req: Request) {
     const type = file.type || '';
     const extOk = ext ? ALLOWED_EXTENSIONS.has(ext) : false;
     const typeOk = type ? ALLOWED_MIME_TYPES.has(type) : false;
-    if (!(extOk || typeOk)) {
-      return NextResponse.json({ error: 'Unsupported file type' }, { status: 415 });
+
+    // Require both extension and MIME type to be valid for stronger validation
+    if (!ext || !extOk) {
+      return NextResponse.json({ error: 'Invalid or missing file extension' }, { status: 415 });
+    }
+    if (!type || !typeOk) {
+      return NextResponse.json({
+        error: 'Invalid or missing MIME type. File type does not match extension.'
+      }, { status: 415 });
     }
 
     const maxMb = config.uploads.maxMb;

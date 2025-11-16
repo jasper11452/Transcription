@@ -42,19 +42,16 @@ export async function bcutTranscribe(input: BcutTranscribeInput): Promise<BcutTr
   const model = options?.model ?? config.bcut.model;
   const prompt = options?.prompt ?? config.bcut.prompt;
 
-  if (!baseUrl) {
-    throw new Error('Missing required env var: BCUT_BASE_URL');
-  }
-  if (!apiKey) {
-    throw new Error('Missing required env var: BCUT_API_KEY');
-  }
+  // No need to check for baseUrl and apiKey here as they are now required at config load time
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const form = new FormData();
-    const blob = new Blob([buffer], { type: mimeType || 'application/octet-stream' });
+    // Convert Buffer to Uint8Array for compatibility with Blob
+    const uint8Array = new Uint8Array(buffer);
+    const blob = new Blob([uint8Array], { type: mimeType || 'application/octet-stream' });
     form.append('file', blob, filename);
     if (language) form.append('language', language);
     if (model) form.append('model', model);

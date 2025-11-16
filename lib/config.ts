@@ -20,8 +20,8 @@ function getEnv<T = string>({ name, fallback, parse, required }: GetEnvOptions<T
 export const config = {
   // BCut API
   bcut: {
-    baseUrl: getEnv<string>({ name: 'BCUT_BASE_URL', fallback: '' }),
-    apiKey: getEnv<string>({ name: 'BCUT_API_KEY', fallback: '' }),
+    baseUrl: getEnv<string>({ name: 'BCUT_BASE_URL', required: true }),
+    apiKey: getEnv<string>({ name: 'BCUT_API_KEY', required: true }),
     transcribePath: getEnv<string>({ name: 'BCUT_TRANSCRIBE_PATH', fallback: '/v1/transcribe' }),
     timeoutMs: getEnv<number>({ name: 'BCUT_TIMEOUT_MS', fallback: 120000, parse: Number }),
     language: getEnv<string | undefined>({ name: 'BCUT_LANGUAGE', fallback: undefined }),

@@ -4,11 +4,16 @@ export const ALLOWED_MIME_TYPES = new Set<string>([
   'audio/mp3',
   'audio/wav',
   'audio/x-wav',
+  'audio/wave',
   'audio/webm',
   'audio/ogg',
-  'audio/m4a',
+  'audio/mp4', // .m4a standard MIME type
+  'audio/x-m4a', // .m4a alternative MIME type
   'audio/aac',
+  'audio/aacp',
+  'audio/x-aac',
   'audio/flac',
+  'audio/x-flac',
   // Video (some ASR providers accept video directly)
   'video/mp4',
   'video/webm',
