@@ -21,3 +21,22 @@ uploads/
 .DS_Store
 .idea/
 .vscode/
+
+# 现代化工作区（见 analysis/transcript/INTENT.md）
+#
+# legacy/ —— 忽略。它是 git HEAD 的逐字节副本（git archive 导出），跟踪它等于
+#            把同一个仓库装两遍，且会让「快照是否被动过」这件事变难。
+# modernized/ 与 analysis/ —— 跟踪。前者是重建产物（四个成员包 + 541 个通过的
+#            断言），后者是分析与方案的交付物；两者都不是草稿。
+#
+# 只排除可再生的 HTML 报告：它们由插件脚本从邻接的 topology.json / *.md 重新生成，
+# 体量大（合计约 4.1 MB）且每次重建都变。
+legacy/
+analysis/transcript/REPORT.html
+analysis/transcript/TOPOLOGY.html
+
+# 现代化工作区里的缓存
+modernized/**/.pytest_cache/
+modernized/**/.ruff_cache/
+modernized/**/__pycache__/
+analysis/**/__pycache__/

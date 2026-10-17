@@ -1,0 +1,19 @@
+节点 id      : ui.lib
+节点名       : lib/（API · 类型 · SSE）
+位置         : frontend/src/lib
+代码行数     : 371
+
+—— 文件头部注释 ——
+(无)
+
+—— 连接（来自拓扑图）——
+  -> web.app  [dispatch]  web/app.py
+  <- ui.main  [call]  main.tsx（控制台页）
+  <- ui.task  [call]  task.tsx（任务详情页）
+
+—— 源码片段 ——
+    105 行  frontend/src/lib/api.ts
+     97 行  frontend/src/lib/summary-stream.ts
+     34 行  frontend/src/lib/task-groups.ts
+    186 行  frontend/src/lib/types.ts
+      7 行  frontend/src/lib/utils.ts

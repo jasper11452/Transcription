@@ -1,0 +1,117 @@
+[
+  {
+    "name": "frontend",
+    "domain": "frontend",
+    "files": [
+      "frontend/postcss.config.js",
+      "frontend/tailwind.config.js",
+      "frontend/vite.config.ts"
+    ],
+    "loc": 143
+  },
+  {
+    "name": "frontend/public",
+    "domain": "frontend/public",
+    "files": [
+      "frontend/public/theme.js"
+    ],
+    "loc": 90
+  },
+  {
+    "name": "frontend/src",
+    "domain": "frontend/src",
+    "files": [
+      "frontend/src/main.tsx",
+      "frontend/src/task.tsx"
+    ],
+    "loc": 1571
+  },
+  {
+    "name": "frontend/src/components",
+    "domain": "frontend/src/components",
+    "files": [
+      "frontend/src/components/history-sidebar.tsx"
+    ],
+    "loc": 179
+  },
+  {
+    "name": "frontend/src/components/ui",
+    "domain": "frontend/src/components/ui",
+    "files": [
+      "frontend/src/components/ui/alert.tsx",
+      "frontend/src/components/ui/badge.tsx",
+      "frontend/src/components/ui/button.tsx",
+      "frontend/src/components/ui/card.tsx",
+      "frontend/src/components/ui/dialog.tsx",
+      "frontend/src/components/ui/dropdown-menu.tsx",
+      "frontend/src/components/ui/input.tsx",
+      "frontend/src/components/ui/label.tsx",
+      "frontend/src/components/ui/progress.tsx",
+      "frontend/src/components/ui/select.tsx",
+      "frontend/src/components/ui/skeleton.tsx",
+      "frontend/src/components/ui/tabs.tsx",
+      "frontend/src/components/ui/textarea.tsx",
+      "frontend/src/components/ui/toast.tsx"
+    ],
+    "loc": 900
+  },
+  {
+    "name": "frontend/src/lib",
+    "domain": "frontend/src/lib",
+    "files": [
+      "frontend/src/lib/api.ts",
+      "frontend/src/lib/summary-stream.ts",
+      "frontend/src/lib/task-groups.ts",
+      "frontend/src/lib/types.ts",
+      "frontend/src/lib/utils.ts"
+    ],
+    "loc": 429
+  },
+  {
+    "name": "src/transcript",
+    "domain": "src/transcript",
+    "files": [
+      "src/transcript/__init__.py",
+      "src/transcript/align.py",
+      "src/transcript/audio.py",
+      "src/transcript/chunking.py",
+      "src/transcript/cli.py",
+      "src/transcript/config.py",
+      "src/transcript/diar.py",
+      "src/transcript/errors.py",
+      "src/transcript/glossary.py",
+      "src/transcript/merge.py",
+      "src/transcript/models.py",
+      "src/transcript/pipeline.py",
+      "src/transcript/render.py",
+      "src/transcript/store.py",
+      "src/transcript/summary.py",
+      "src/transcript/vad.py"
+    ],
+    "loc": 3308
+  },
+  {
+    "name": "src/transcript/engines",
+    "domain": "src/transcript/engines",
+    "files": [
+      "src/transcript/engines/__init__.py",
+      "src/transcript/engines/base.py",
+      "src/transcript/engines/bcut.py",
+      "src/transcript/engines/dashscope.py",
+      "src/transcript/engines/offline.py",
+      "src/transcript/engines/openrouter.py"
+    ],
+    "loc": 902
+  },
+  {
+    "name": "src/transcript/web",
+    "domain": "src/transcript/web",
+    "files": [
+      "src/transcript/web/__init__.py",
+      "src/transcript/web/app.py",
+      "src/transcript/web/frontend.py",
+      "src/transcript/web/jobs.py"
+    ],
+    "loc": 1054
+  }
+]
