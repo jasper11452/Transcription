@@ -13,6 +13,7 @@ legacy 快照是**只读基准**（``legacy/transcript/``，全程不改）。�
 from __future__ import annotations
 
 import importlib
+import re
 import sys
 from pathlib import Path
 
@@ -177,16 +178,52 @@ def _pairs():
     ]
 
 
-def test_to_srt_is_byte_for_byte_equivalent():
+def test_to_srt_is_byte_for_byte_equivalent_without_speaker_labels():
     legacy = _legacy("render")
     from transcript_reimagined.post.render import to_srt
 
-    old_segments = [pair[0] for pair in _pairs()]
-    new_segments = [pair[1] for pair in _pairs()]
+    # D7：Q8 裁定 SRT 也要输出说话人标签，因此等价性只对「没有 speaker」的
+    # 路径成立；有 speaker 的差异由下一条测试按已署名变更断言。
+    old_segments = [
+        _legacy("models").Segment(s["start"], s["end"], s["text"])
+        for s in RENDER_SEGMENTS
+    ]
+    new_segments = [
+        importlib.import_module("transcript_reimagined.domain.models").Segment(
+            s["start"], s["end"], s["text"]
+        )
+        for s in RENDER_SEGMENTS
+    ]
     comments = ["词表替换（原始转写见 .raw.json）：艾麦→集诚 ×3"]
     assert to_srt(new_segments, comment_lines=comments) == legacy.to_srt(
         old_segments, comment_lines=comments
     )
+
+
+def test_to_srt_speaker_labels_are_a_signed_deviation():
+    """D7：legacy 的 `to_srt` 完全忽略 speaker；重建版按 Q8 输出标签。"""
+    legacy = _legacy("render")
+    from transcript_reimagined.post.align import normalize_for_compare
+    from transcript_reimagined.post.render import to_srt
+
+    old_segments = [pair[0] for pair in _pairs()]
+    new_segments = [pair[1] for pair in _pairs()]
+    old_srt = legacy.to_srt(old_segments)
+    new_srt = to_srt(new_segments)
+    assert "[speaker_1]" not in old_srt
+    assert "[speaker_1]" in new_srt
+
+    def spoken_text(srt: str) -> str:
+        text = re.sub(r"\[(?:speaker_\d+|\?)\] ", "", srt)
+        lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and not line.strip().isdigit() and "-->" not in line
+        ]
+        return normalize_for_compare("".join(lines))
+
+    # 正文本身一字不丢；换行位置可能因标签参与折行而不同（已在 DEVIATIONS D7 署名）。
+    assert spoken_text(new_srt) == spoken_text(old_srt)
 
 
 def test_to_txt_is_byte_for_byte_equivalent_on_both_paths():

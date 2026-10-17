@@ -5,7 +5,5 @@
 
 from __future__ import annotations
 
-import pytest
-
 RULE_MARKER = "rule"
 PENDING_MARKER = "pending_implementation"

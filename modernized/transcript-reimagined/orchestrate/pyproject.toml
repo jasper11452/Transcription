@@ -1,0 +1,48 @@
+[project]
+name = "transcript-orchestrate"
+version = "0.1.0"
+description = "transcript 重建版 · orchestrate：编排 + 调度（并发预算、事件总线、取消）"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "transcript-config",
+    "transcript-diar",
+    "transcript-domain",
+    "transcript-engines",
+    "transcript-ingest",
+    "transcript-post",
+    "transcript-state",
+    "transcript-summarize",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcript_reimagined/orchestrate"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.uv.sources]
+transcript-config = { workspace = true }
+transcript-diar = { workspace = true }
+transcript-domain = { workspace = true }
+transcript-engines = { workspace = true }
+transcript-ingest = { workspace = true }
+transcript-post = { workspace = true }
+transcript-state = { workspace = true }
+transcript-summarize = { workspace = true }

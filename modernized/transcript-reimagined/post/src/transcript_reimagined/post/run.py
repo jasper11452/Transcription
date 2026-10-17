@@ -26,9 +26,10 @@
 
     transcript-post-run --input plan.json --out-dir out --stem meeting
 
-`artifact="srt"` 而没有任何段落时**拒绝出产物**（`RULE-061`：没有时间轴就不写 srt，
-也不写一个空 srt 充数）。产物落盘位置由本入口决定 —— 它是 orchestrate 单点决策在
-Phase 1 的替身（架构 §2：产物选择必须是单点决策）。
+`artifact="srt"` 而没有任何段落时**拒绝出产物**（`RULE-061`：没有时间轴就不写 srt）。
+`artifact="txt"` 只写 `.txt` + `.raw.json`，**不写** `.srt`（Q9 裁定）。产物落盘位置
+由本入口决定 —— 它是 orchestrate 单点决策在 Phase 1 的替身（架构 §2：产物选择必须是
+单点决策）。
 
 安全（NFR-4）：本入口不读、不接受任何凭据；`source` 只是 provenance 字符串。
 """
@@ -44,7 +45,12 @@ from typing import Any
 
 from .domain import Change, Segment, Word
 from .glossary import apply_rules, change_header_line, hotwords, parse_glossary, parse_hot_words
-from .products import ProductSet, RawContext, render_products, write_products
+from .products import (
+    ProductSet,
+    RawContext,
+    render_products_for,
+    write_products_for,
+)
 
 
 class InputError(Exception):
@@ -133,10 +139,11 @@ def build_products(payload: dict[str, Any]) -> BuiltProducts:
         config=payload.get("config"),
         chunks=list(payload.get("chunks") or []),
     )
-    products = render_products(
+    products = render_products_for(
         final_text,
         replaced_segments,
         changes,
+        artifact=artifact,
         merged_text_before_glossary=merged_text,
         context=ctx,
     )
@@ -175,13 +182,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"拒绝出产物：{exc}", file=sys.stderr)
         return 1
 
-    written = write_products(built.products, args.out_dir, stem)
+    written = write_products_for(
+        built.products, args.out_dir, stem, artifact=str(payload.get("artifact", "srt"))
+    )
     print(
         json.dumps(
             {
                 "out_dir": str(written.out_dir),
                 "txt_path": str(written.txt_path),
-                "srt_path": str(written.srt_path),
+                "srt_path": str(written.srt_path) if written.srt_path else None,
                 "raw_path": str(written.raw_path),
                 "changes": [c.describe() for c in built.changes],
                 "hotwords": built.words,

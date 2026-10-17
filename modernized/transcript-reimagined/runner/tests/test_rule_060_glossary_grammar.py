@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import pytest
-
 from transcript_reimagined.domain.models import Rule
 from transcript_reimagined.post.glossary import (
     is_hot_word_line,

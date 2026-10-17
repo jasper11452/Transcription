@@ -16,11 +16,15 @@ from __future__ import annotations
 
 from transcript_reimagined.domain import (
     Change,
-    Issue as GlossaryIssue,
-    Rule as GlossaryRule,
     Segment,
     Word,
     fmt_timestamp,
+)
+from transcript_reimagined.domain import (
+    Issue as GlossaryIssue,
+)
+from transcript_reimagined.domain import (
+    Rule as GlossaryRule,
 )
 
 __all__ = [

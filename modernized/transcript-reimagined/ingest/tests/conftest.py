@@ -20,10 +20,7 @@ expected-failure。
 from __future__ import annotations
 
 import sys
-from collections import Counter, defaultdict
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SIBLINGS = Path(__file__).resolve().parents[2]

@@ -4,23 +4,24 @@
 ``audio.py`` ``vad.py`` ``chunking.py``）。它只回答「音频是什么、该切成哪几片」，
 不回答「转写结果怎么落盘」（那是 ``orchestrate`` / ``post`` 的事）。
 
-**本阶段（Phase 1）只含 ``chunking.py``** —— 见 §5 的落地表：
-``audio`` / ``vad`` 属 Phase 3，本包以显式 ``NotImplementedError`` 占位，
-不提供半成品实现（与 ``post`` 对 ``align`` / ``merge`` 的做法一致）。
+**本包（Phase 3 之后）包含四个模块**：``chunking`` / ``plan`` 是纯函数；
+``audio`` 是唯一碰 ffmpeg 的地方；``vad`` 懒加载 mlx-audio 模型。
 
 边界（可由 lint / AST 检查）：
 - 只依赖 ``domain``（架构的依赖图：``domain <- ingest <- orchestrate``）；
-- 不写文件、不碰网络、不碰 SQLite；
+- 不写产物、不碰网络、不碰 SQLite；工作副本是临时品（NFR-2）；
 - ``chunking`` 是**纯函数**，零副作用 —— 切片错了后面全错，所以它可以独立单测；
-- 唯一碰 ffmpeg 的地方（Phase 3 的 ``audio.py``）也住在这里。
+- 唯一碰 ffmpeg 的地方（``audio.py``）也住在这里。
 """
 
 from __future__ import annotations
 
 __version__ = "0.1.0"
 
+from .audio import cut, probe, require_ffmpeg, to_mp3_64k, to_wav16k, verify
 from .chunking import plan_chunks, plan_chunks_with
 from .plan import MIN_GAP_FOR_CUT_S, MIN_INNER_S, ChunkPlan
+from .vad import merge_gaps, speech_spans
 
 __all__ = [
     "__version__",
@@ -31,8 +32,14 @@ __all__ = [
     # 切片规划（RULE-011 / RULE-012）
     "plan_chunks",
     "plan_chunks_with",
+    # 探测 / 归一化 / 切（RULE-049 / RULE-050）
+    "probe",
+    "require_ffmpeg",
+    "verify",
+    "to_wav16k",
+    "to_mp3_64k",
+    "cut",
+    # 语音活动门控（RULE-028）
+    "speech_spans",
+    "merge_gaps",
 ]
-
-# audio / vad 属 Phase 3。**不**在这里 re-export：它们的调用会抛
-# NotImplementedError，从包根导出会让人误以为已经可用。需要引用签名时显式写
-# `from transcript_reimagined.ingest import audio` 或 `... import vad`。

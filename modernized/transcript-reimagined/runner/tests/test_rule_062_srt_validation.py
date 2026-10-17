@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 
 import pytest
-
 from transcript_reimagined.domain.models import Segment
 from transcript_reimagined.post.render import MAX_SRT_LINE_CHARS, to_srt
 

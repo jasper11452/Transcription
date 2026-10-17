@@ -71,7 +71,13 @@ class Chunk:
 
 @dataclass
 class TranscriptResult:
-    """一个引擎对一段音频的转写结果。"""
+    """一个引擎对一段音频的转写结果。
+
+    ``words`` 是引擎给出的**原始词级时间戳**（若有）。架构 v2 砍掉了
+    ``engines → post(align)`` 这条边：引擎不自己做对齐，只把 words 交出来，
+    由 ``orchestrate`` 调 ``post.align.build_segments``。``segments`` 只给
+    原生就有时段结构的引擎（OpenRouter / 必剪）使用。
+    """
 
     text: str
     segments: list[Segment] = field(default_factory=list)
@@ -80,6 +86,7 @@ class TranscriptResult:
     cost_usd: float | None = None
     engine: str = ""
     has_timestamps: bool = False
+    words: list[Word] = field(default_factory=list)
 
     def shifted(self, offset: float) -> TranscriptResult:
         return TranscriptResult(
@@ -90,6 +97,7 @@ class TranscriptResult:
             cost_usd=self.cost_usd,
             engine=self.engine,
             has_timestamps=self.has_timestamps,
+            words=[Word(w.text, w.start + offset, w.end + offset, w.probability) for w in self.words],
         )
 
 

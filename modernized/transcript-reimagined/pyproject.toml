@@ -25,7 +25,7 @@ build-backend = "hatchling.build"
 # 解析到遗留包 —— 静默跑旧代码而不报错。
 # ─────────────────────────────────────────────────────────────────────────────
 [tool.uv.workspace]
-members = ["domain", "ingest", "post", "runner"]
+members = ["domain", "config", "state", "ingest", "post", "diar", "engines", "summarize", "orchestrate", "web", "runner"]
 
 # 根项目是虚拟项目：没有可发布的代码，只有成员包与共享配置。
 # 不加这一行，`uv sync` 会尝试用 hatchling 构建根项目并因「找不到要打包的目录」失败。
@@ -34,8 +34,15 @@ package = false
 
 [tool.uv.sources]
 transcript-domain = { workspace = true }
+transcript-config = { workspace = true }
+transcript-state = { workspace = true }
 transcript-ingest = { workspace = true }
 transcript-post = { workspace = true }
+transcript-diar = { workspace = true }
+transcript-engines = { workspace = true }
+transcript-summarize = { workspace = true }
+transcript-orchestrate = { workspace = true }
+transcript-web = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -43,13 +50,24 @@ dev = [
     "ruff>=0.6",
     # 架构 §3：把「无环性」从口号变成可检查事实。
     "import-linter>=2.0",
+    # config 成员的运行依赖；测试从 src 路径导入该包，所以根环境也要有它。
+    "python-dotenv>=1.0",
+    # diar 成员的运行依赖（Phase 3）；ABI 测试需要真的读 wav。
+    "numpy>=2.0,<2.5",
+    "soundfile>=0.13",
+    # engines 成员的运行依赖（Phase 4）；夹具回放测试用 MockTransport。
+    "httpx>=0.28",
+    # web 成员的运行依赖（Phase 6）；路由测试用 TestClient，冒烟用 uvicorn。
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
 ]
 
 # ── 一次跑全部：testpaths 覆盖四个成员；各成员 src 的路径注入在
 #    conftest_support/paths.py（不用 ini 的 pythonpath：它相对 rootdir 解析，
 #    会被成员自带的 pytest 配置抢走 rootdir 而静默失效）──
 [tool.pytest.ini_options]
-testpaths = ["domain/tests", "ingest/tests", "post/tests", "runner/tests"]
+testpaths = ["domain/tests", "config/tests", "state/tests", "ingest/tests", "post/tests", "diar/tests", "engines/tests", "summarize/tests", "orchestrate/tests", "web/tests", "runner/tests"]
 # 只服务一件事：让根 conftest.py 能 import conftest_support（路径相对 rootdir）。
 # 成员 src 的注入仍在 conftest_support/paths.py —— 那是为了不依赖 rootdir 判定。
 # 有了这一行，`uv run pytest`（console script，不把 cwd 放进 sys.path）也能跑。
@@ -65,11 +83,12 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["domain/src", "ingest/src", "post/src", "runner/src"]
+src = ["domain/src", "config/src", "state/src", "ingest/src", "post/src", "diar/src", "engines/src", "summarize/src", "orchestrate/src", "web/src", "runner/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 分层契约（架构 §3）。这里声明的是**跨成员**的那几条；成员内部的单向依赖由各
@@ -95,8 +114,16 @@ name = "domain 是全仓唯一的叶：不依赖任何上层包"
 type = "forbidden"
 source_modules = ["transcript_reimagined.domain"]
 forbidden_modules = [
+    "transcript_reimagined.config",
+    "transcript_reimagined.state",
     "transcript_reimagined.ingest",
     "transcript_reimagined.post",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
     "transcript_reimagined.runner",
 ]
 
@@ -105,3 +132,141 @@ name = "重建版绝不包装 legacy 实现（重建，而非改名）"
 type = "forbidden"
 source_modules = ["transcript_reimagined"]
 forbidden_modules = ["transcript"]
+
+# ── Phase 2 起：配置与仓储都在依赖图的第二层，只能向下看 domain ──────────────
+[[tool.importlinter.contracts]]
+name = "config 只依赖 domain"
+type = "forbidden"
+source_modules = ["transcript_reimagined.config"]
+forbidden_modules = [
+    "transcript_reimagined.state",
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.post",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "state 只依赖 domain"
+type = "forbidden"
+source_modules = ["transcript_reimagined.state"]
+forbidden_modules = [
+    "transcript_reimagined.config",
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.post",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "diar 只依赖 config 与 domain"
+type = "forbidden"
+source_modules = ["transcript_reimagined.diar"]
+forbidden_modules = [
+    "transcript_reimagined.state",
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.post",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "engines 只依赖 config 与 domain"
+type = "forbidden"
+source_modules = ["transcript_reimagined.engines"]
+forbidden_modules = [
+    "transcript_reimagined.state",
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.post",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+# state.db 的唯一写入者：全仓只有 state 包可以 import sqlite3。
+# 只禁止**直接** import：上层合法地 import state，state 内部 import sqlite3。
+[[tool.importlinter.contracts]]
+name = "sqlite3 只在 state ——— state.db 的唯一写入者"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "transcript_reimagined.domain",
+    "transcript_reimagined.config",
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.post",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+forbidden_modules = ["sqlite3"]
+
+# ── Phase 5/6：完整分层 ────────────────────────────────────────────────────
+[[tool.importlinter.contracts]]
+name = "分层：cli -> web -> orchestrate -> summarize -> {ingest, engines, post, diar, state} -> config -> domain"
+type = "layers"
+layers = [
+    "transcript_reimagined.cli",
+    "transcript_reimagined.web",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.summarize",
+    "transcript_reimagined.post | transcript_reimagined.ingest | transcript_reimagined.engines | transcript_reimagined.diar | transcript_reimagined.state",
+    "transcript_reimagined.config",
+    "transcript_reimagined.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "summarize 只依赖 config / state / post / domain"
+type = "forbidden"
+source_modules = ["transcript_reimagined.summarize"]
+forbidden_modules = [
+    "transcript_reimagined.ingest",
+    "transcript_reimagined.engines",
+    "transcript_reimagined.diar",
+    "transcript_reimagined.orchestrate",
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "orchestrate 不依赖 web / runner（调度在编排层，不在传输层）"
+type = "forbidden"
+source_modules = ["transcript_reimagined.orchestrate"]
+forbidden_modules = [
+    "transcript_reimagined.web",
+    "transcript_reimagined.cli",
+    "transcript_reimagined.runner",
+]
+
+[[tool.importlinter.contracts]]
+name = "web 不依赖 runner（P1 的纵向切片入口不是产品路径）"
+type = "forbidden"
+source_modules = ["transcript_reimagined.web"]
+forbidden_modules = ["transcript_reimagined.runner"]
+
+[[tool.importlinter.contracts]]
+name = "cli 不依赖 runner（CLI 走 scheduler/Pipeline，不走切片入口）"
+type = "forbidden"
+source_modules = ["transcript_reimagined.cli"]
+forbidden_modules = ["transcript_reimagined.runner"]

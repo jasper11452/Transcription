@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import pytest
-
 from transcript_reimagined.domain.models import Segment, fmt_timestamp
 from transcript_reimagined.post.render import to_srt
 

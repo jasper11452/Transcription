@@ -14,8 +14,8 @@ from pathlib import Path
 
 from transcript_reimagined.domain import Change, Chunk, Segment
 from transcript_reimagined.ingest import plan_chunks
-from transcript_reimagined.post import apply_rules, change_comment, load_glossary
-from transcript_reimagined.post import to_srt, to_txt
+from transcript_reimagined.post import apply_rules, change_comment, load_glossary, to_srt, to_txt
+
 from .metadata import AudioMetadata, MetadataError, load_metadata, parse_metadata
 from .products import (
     ALLOWED_ARTIFACTS,

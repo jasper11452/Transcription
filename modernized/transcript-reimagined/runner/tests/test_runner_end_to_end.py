@@ -9,14 +9,12 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-
-
 import sys
 from pathlib import Path
 
 import pytest
 
-from _fixtures import SRC, metadata_doc, metadata_json
+from _fixtures import metadata_doc, metadata_json
 from transcript_reimagined.runner.metadata import MetadataError
 from transcript_reimagined.runner.products import ProductError
 from transcript_reimagined.runner.run import RunRequest, run

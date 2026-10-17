@@ -15,7 +15,13 @@ from __future__ import annotations
 
 import pytest
 
-from transcript_reimagined.post import Change, GlossaryRule, apply_rules, change_comment, change_header_line
+from transcript_reimagined.post import (
+    Change,
+    GlossaryRule,
+    apply_rules,
+    change_comment,
+    change_header_line,
+)
 
 GIVEN_RULES = [GlossaryRule("集成", "集诚"), GlossaryRule("成", "诚")]
 

@@ -41,13 +41,14 @@
 
 ## 2. 试点的三道门禁（P2–P6 沿用）
 
-| 门禁 | 命令 | 试点结果 |
-|---|---|---|
-| 全量测试 | `pytest`（workspace 根） | **541 通过 / 3 跳过 / 41 xfail** |
-| 分层契约 | `lint-imports` | **3 kept, 0 broken** |
-| 端到端 | `python -m transcript_reimagined.runner <meta.json> --out <dir>` | **真实写出三个产物，带词表替换头注释** |
+| 门禁 | 命令 | 试点结果 | P6 收口 |
+|---|---|---|---|
+| 全量测试 | `uv run pytest`（workspace 根） | **542 通过 / 2 跳过 / 41 xfail** | **816 通过 / 2 跳过** |
+| 分层契约 | `lint-imports` | **3 kept, 0 broken** | **13 kept, 0 broken** |
+| 端到端 | `python -m transcript_reimagined.runner <meta.json> --out <dir>` | **真实写出三个产物，带词表替换头注释** | 新旧 Pipeline 三产物**逐字节一致** |
+| 前端 | `npm test` + `npm run build` | — | **11 条 Node 测试；dist 通过启动门禁** |
 
-**「实际执行的断言数」是门禁的一部分** —— 空跑的套件证明不了任何事。试点的 541 是真实执行的。
+**「实际执行的断言数」是门禁的一部分** —— 空跑的套件证明不了任何事。
 
 ---
 
@@ -129,6 +130,18 @@ modernized/transcript-reimagined/
 1. **预期**：`pythonpath` ini 选项能让四个成员互相导入。**实际**：它相对 rootdir 解析，而 rootdir 会被成员自己的 pytest 配置抢走 —— 改成在根 `conftest.py` 里显式 `sys.path.insert`。
 2. **预期**：四个服务的测试可以直接合跑。**实际**：需要同时解决三类冲突（`--rule` 重复注册、8 组同名测试文件、根与成员 `conftest` 同名遮蔽）。**并行脚手架的合并成本不在代码，在测试基建。**
 3. **预期**：把 `runner` 的副本删掉、import 改指真包就完事。**实际**：还需要给真包补 6 个被引用的名字（其中 `is_recoverable` / `retry_delay_s` 是规则卡里有、实现里漏的 NFR-11 常量）。
+
+---
+
+## 6b. P2–P6 追加的教训（全部踩过）
+
+1. **测试 helper 不能跨成员重名。** `orchestrate/tests/_fakes.py` 与 `web/tests/_fakes.py` 在 `importlib` 模式下共享模块名，后加载的成员会拿到前一个成员的模块。改成 `orchestrate_fakes.py` / `web_fakes.py`。
+2. **ruff 按成员解析配置。** 根 `pyproject.toml` 的 `per-file-ignores` 不会作用于成员文件；`B008`（FastAPI `Depends`）与 `SIM118`（sqlite3.Row）的豁免必须写在各成员的 `pyproject.toml`。
+3. **`Config` 的默认 `state_db` 指向用户真实库。** 测试夹具必须显式传 `state_db=tmp_path/...`；漏传会让子进程写进 `~/Documents/Transcript/state.db`（本项目踩过一次，已清理）。
+4. **通用 `dist/` 忽略会吞掉前端产物。** 服务启动的硬门槛要求提交 `web/src/.../static/dist`，必须在 `.gitignore` 里显式放行。
+5. **包 `__init__` 不要 re-export 与子模块同名的 `main`。** 否则 `python -m pkg.main` 会触发 runpy 的「found in sys.modules」警告；控制台脚本直接指向 `pkg.main:main`。
+6. **前端修复要留静态断言。** Q1/Q2/Q4/Q5/Q6/Q10 是行为修复，但 React 单测成本高；在 `web/tests/test_frontend_source.py` 里对关键字符串做断言，能防回退。
+7. **进程级续跑要真杀进程。** `test_process_kill.py` 用子进程 `os._exit(9)`，父进程重新打开同一个 `state.db` 验证分片 0 未重跑 —— 新建一个 Pipeline 实例不算「杀进程」。
 
 ---
 

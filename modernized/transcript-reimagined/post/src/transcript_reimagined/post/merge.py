@@ -1,57 +1,181 @@
-"""merge —— 去重：只在分片边界去重、正文零丢失。
+"""分片合并与重叠去重。
 
-**Phase 3 才落地**（`REIMAGINED_ARCHITECTURE.md` §5）。本模块只固化签名与常量，
-调用即 `NotImplementedError`。
+切片时相邻片留了重叠（0.3–1s），同一句话会被转写两遍。
+合并必须**只去重、不丢内容**：宁可留下一点重复，也不能吃掉句子。
 
-落地时要满足的规则：
-- `RULE-001`（**P0-1**）分片边界去重、绝不丢正文 —— 重复文字只在两个分片拼接处去掉，
-  且只在切完还剩非空内容时才丢弃；时间戳重叠单独修
-- `RULE-023` 成本跨片累加，audio_seconds 不聚合（各引擎口径不同）
-- `RULE-024` 相邻分片的重叠判定
+重建自 ``legacy/transcript/src/transcript/merge.py``。规则：
+`RULE-001`（**P0-1**，分片边界去重）、`RULE-023`（成本累加、音频秒数不聚合）、
+`RULE-024`（重叠判定）。
 
-⚠️ 写测试前必读 `AI_NATIVE_SPEC.md` §5.4：P0-1 的**例子**在规则卡里是错的 ——
-`longest_overlap` 要求 `>= _MIN_OVERLAP_CHARS = 4` 的重叠，3 字符的重叠检测为 0、
-重复文本原样保留。生日判据必须用 ≥4 字符的重叠。
-⚠️ `RULE-024` 的 `_MIN_COVERAGE` 可执行常量是 **0.8**，而 docstring 写的是 70% ——
-以代码为准（更严格的那个），docstring 的意图（保守阈值来自一次 87 分钟录音丢 111 字
-的真实事故）保留。
+**P0-1 的判据例子已在规则卡里被评委修正**：`longest_overlap` 要求 ≥4 字符的
+重叠；3 字符重叠检测为 0、重复文本原样保留（见 `AI_NATIVE_SPEC.md` §5.4）。
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from difflib import SequenceMatcher
 
-from .domain import Segment
+from transcript_reimagined.domain import Segment, TranscriptResult
 
-# 重叠窗口与阈值（`RULE-024`）。实现时不得放宽。
+_LEADING_PUNCT = "。！？!?…，,；;、：:. \n\t"
+_MIN_OVERLAP_CHARS = 4
+_TAIL_TOLERANCE = 3
+_HEAD_TOLERANCE = 1
+_GAP_TOLERANCE = 1
+MIN_COVERAGE = 0.8
+
+#: 脚手架阶段定下的公开常量名（供测试与调用方引用，避免再硬编码）。
 OVERLAP_WINDOW_CHARS = 240
-MIN_OVERLAP_CHARS = 4
-TAIL_TOLERANCE = 3
-HEAD_TOLERANCE = 1
-GAP_TOLERANCE = 1
-MIN_COVERAGE = 0.8  # docstring 说 70%，代码是 80% —— 以代码为准（更严格）
+MIN_OVERLAP_CHARS = _MIN_OVERLAP_CHARS
 MIN_SEGMENT_S = 0.05
-
-# 去重切掉后要剥掉的行首标点（`RULE-001`）。
-LEADING_PUNCTUATION = "。！？!?…，,；;、：:. \n\t"
+LEADING_PUNCTUATION = _LEADING_PUNCT
 
 
-def longest_overlap(prev_text: str, next_text: str) -> int:
-    """两个相邻分片文本的最长重叠字符数（`RULE-024`）；小于阈值视为无重叠。"""
-    raise NotImplementedError("merge.longest_overlap 属 Phase 3（RULE-024）")
+def longest_overlap(prev_tail: str, new_head: str, *, window: int = OVERLAP_WINDOW_CHARS) -> int:
+    """prev 结尾与 new 开头的最长重复长度（先精确，后按覆盖率模糊判定）。
 
+    判据有三条，缺一不可：
+    1. 匹配必须**锚定在 prev 的尾部**（只有真正接续才算重叠）；
+    2. 匹配必须**从 new 的开头起算**；
+    3. 覆盖到的字符里至少 80% 真的匹配上（容忍 ASR 的个别错字）。
 
-def merge_results(results: Sequence[object]) -> object:
-    """把按分片顺序排列的转写结果合并成一份（`RULE-001` / `RULE-023` / `RULE-024`）。
-
-    不变量：正文零丢失；分片内部段落之间绝不去重；时间轴修好使播放器不会同时显示两行。
+    阈值偏保守是故意的：少去重只是留一点重复，多去重会吃掉正文。
+    实测反例："第一段。" vs "第二段。" 会因共同的"第"字连成一块（覆盖率 0.75），
+    若不要求高覆盖率就会把整句吃掉。
     """
-    raise NotImplementedError(
-        "merge.merge_results 属 Phase 3（RULE-001 / RULE-023 / RULE-024）；"
-        "Phase 1 的 post 只含 glossary + render"
-    )
+    if not prev_tail or not new_head:
+        return 0
+    a = prev_tail[-window:]
+    b = new_head[:window]
+    limit = min(len(a), len(b))
+
+    for k in range(limit, _MIN_OVERLAP_CHARS - 1, -1):
+        if a[-k:] == b[:k]:
+            return k
+
+    blocks = [
+        bl
+        for bl in SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks()
+        if bl.size > 0
+    ]
+    if not blocks or blocks[0].b > _HEAD_TOLERANCE:
+        return 0
+
+    covered = 0
+    end_b = 0
+    max_a_end = 0
+    for bl in blocks:
+        if bl.b > end_b + _GAP_TOLERANCE:
+            break
+        covered += bl.size
+        end_b = bl.b + bl.size
+        max_a_end = max(max_a_end, bl.a + bl.size)
+
+    if end_b < _MIN_OVERLAP_CHARS:
+        return 0
+    if len(a) - max_a_end > _TAIL_TOLERANCE:
+        return 0
+    if covered / end_b < MIN_COVERAGE:
+        return 0
+    return end_b
+
+
+def merge_texts(prev: str, new: str) -> str:
+    """拼接两段文本，去掉边界重复。"""
+    if not prev:
+        return new
+    if not new:
+        return prev
+    k = longest_overlap(prev, new)
+    if k == 0:
+        return prev + new
+    return prev + new[k:].lstrip(_LEADING_PUNCT)
+
+
+def merge_segments(groups: Sequence[Sequence[Segment]]) -> list[Segment]:
+    """按分片分组合并段落，**只在分片边界去重**。
+
+    为什么必须按分组：切片时相邻片有重叠，所以重复只会跨在**分片边界**上；
+    分片内部的句子是同一份文本的连续切片，它们之间不存在重复。
+
+    实测教训（87 分钟录音）：早先版本对**每个句子边界**（1476 处）都跑一次去重，
+    结果把相邻句里的正常内容也当成重复删掉，SRT 比 TXT 少了 111 字；
+    而只按时间重叠去重时，又把边界上的重复留下了 54 字。两种粒度都不对：
+    必须是"与 merge_texts 同粒度（分片边界）+ 同判据（按文本）"。
+    """
+    out: list[Segment] = []
+    for group in groups:
+        segs = sorted((s for s in group if s.text.strip()), key=lambda s: (s.start, s.end))
+        if not segs:
+            continue
+        if out:
+            prev, head = out[-1], segs[0]
+            # 时间卫生与文本去重是两件事，别耦合：
+            # 时间上重叠会让播放器互相覆盖，无论文本是否重复都要修；
+            # 文本上的重复只可能来自切片重叠，所以只在分片边界按需去。
+            if head.start < prev.end - 1e-6:
+                prev.end = max(prev.start + MIN_SEGMENT_S, head.start)
+            overlap = longest_overlap(prev.text, head.text)
+            if overlap:
+                tail = head.text[overlap:].lstrip(_LEADING_PUNCT).strip()
+                if tail:
+                    out.append(
+                        Segment(
+                            start=head.start,
+                            end=max(head.end, head.start + MIN_SEGMENT_S),
+                            text=tail,
+                            words=head.words,
+                            speaker=head.speaker,
+                        )
+                    )
+                segs = segs[1:]
+        out.extend(segs)
+    return out
 
 
 def repair_timeline(segments: Sequence[Segment]) -> list[Segment]:
-    """修相邻段落的时间戳重叠（`RULE-001` 的后半句），画面不叠行。"""
-    raise NotImplementedError("merge.repair_timeline 属 Phase 3（RULE-001）")
+    """修相邻段落的时间戳重叠（`RULE-001` 的后半句），画面不叠行。
+
+    这是 `merge_segments` 里那段「时间卫生」的独立入口，供已经合并过文本的
+    调用方使用；不改变文本，只把后一段的起点推到前一段终点之后。
+    """
+    out: list[Segment] = []
+    for seg in segments:
+        if not seg.text.strip():
+            continue
+        if out and seg.start < out[-1].end - 1e-6:
+            seg = Segment(
+                start=max(out[-1].end, out[-1].start + MIN_SEGMENT_S),
+                end=max(seg.end, out[-1].end + MIN_SEGMENT_S),
+                text=seg.text,
+                words=seg.words,
+                speaker=seg.speaker,
+            )
+        out.append(seg)
+    return out
+
+
+def merge_results(results: Sequence[TranscriptResult]) -> TranscriptResult:
+    """把分片结果按顺序合并成一个结果。"""
+    ordered = [r for r in results if r is not None]
+    if not ordered:
+        return TranscriptResult(text="", engine="")
+    text = ""
+    for result in ordered:
+        text = merge_texts(text, result.text)
+    segments = merge_segments([list(r.segments) for r in ordered])
+    costs = [r.cost_usd for r in ordered if r.cost_usd is not None]
+    return TranscriptResult(
+        text=text.strip(),
+        segments=segments,
+        language=next((r.language for r in ordered if r.language), None),
+        # 不聚合 audio_seconds：它是"一次调用送进去的音频秒数"，各引擎口径不一
+        # （离线不报、在线是 usage 秒数、必剪是最后一句的结束时间），相加得到的
+        # 不是这段音频的真实时长。任务时长由源文件的 ffprobe 结果决定（见 pipeline）。
+        audio_seconds=None,
+        # 费用相反：只要有一个分片报了数就要相加（bcut 报 0.0 也要如实记成 0）
+        cost_usd=sum(costs) if costs else None,
+        engine="+".join(dict.fromkeys(r.engine for r in ordered if r.engine)),
+        has_timestamps=any(r.has_timestamps for r in ordered),
+    )

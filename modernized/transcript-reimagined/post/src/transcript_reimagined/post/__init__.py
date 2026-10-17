@@ -28,13 +28,23 @@ from .glossary import (
     hotwords,
     is_hot_word_line,
     load_glossary,
+    load_hot_words,
     parse_glossary,
     parse_glossary_report,
     parse_hot_words,
     split_entries,
 )
-from .products import ProductSet, WrittenProducts, render_products, write_products
-from .render import MAX_SRT_LINE_CHARS, _wrap, to_srt, to_txt, wrap_srt_line
+from .products import (
+    PRODUCT_KINDS,
+    ProductSet,
+    WrittenProducts,
+    render_products,
+    render_products_for,
+    select_product_kinds,
+    write_products,
+    write_products_for,
+)
+from .render import MAX_SRT_LINE_CHARS, to_srt, to_txt, wrap_srt_line
 
 __all__ = [
     "__version__",
@@ -58,6 +68,7 @@ __all__ = [
     "hotwords",
     "is_hot_word_line",
     "load_glossary",
+    "load_hot_words",
     "parse_glossary",
     "parse_glossary_report",
     "parse_hot_words",
@@ -67,9 +78,13 @@ __all__ = [
     "to_srt",
     "to_txt",
     "wrap_srt_line",
-    # products（RULE-132）
+    # products（RULE-132 / Q9）
+    "PRODUCT_KINDS",
     "ProductSet",
     "WrittenProducts",
     "render_products",
+    "render_products_for",
+    "select_product_kinds",
     "write_products",
+    "write_products_for",
 ]

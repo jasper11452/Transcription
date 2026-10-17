@@ -16,7 +16,10 @@ from __future__ import annotations
 
 import pytest
 
-from transcript_reimagined.post.products import render_products, write_products
+from transcript_reimagined.post.products import (
+    render_products,
+    write_products_for,
+)
 from transcript_reimagined.post.run import InputError, build_products
 
 BASE = {
@@ -43,22 +46,25 @@ class TestNoTimestampsMeansNoSrt:
 
     def test_txt_task_without_timestamps_writes_only_the_txt(self, tmp_path):
         built = build_products(_payload(artifact="txt"))
-        written = write_products(built.products, tmp_path, "meeting")
+        written = write_products_for(built.products, tmp_path, "meeting", artifact="txt")
         assert written.txt_path.read_text(encoding="utf-8").strip() == "只有文本，没有时间轴"
-        # 署名行为变更：不再写一个空 .srt 充数。
-        assert written.srt_path.read_text(encoding="utf-8") == ""
+        # Q9：不再写一个空 .srt 充数 —— 文件本身都不存在。
+        assert written.srt_path is None
+        assert not (tmp_path / "meeting.srt").exists()
 
-    def test_txt_task_with_timestamps_still_writes_both_products(self, tmp_path):
+    def test_txt_task_with_timestamps_never_writes_an_srt(self, tmp_path):
         built = build_products(
             _payload(
                 artifact="txt",
                 segments=[{"start": 0.0, "end": 1.0, "text": "甲"}],
             )
         )
-        written = write_products(built.products, tmp_path, "meeting")
-        # `.txt` 永远是合并文本（不按段落排版），`.srt` 来自段落。
+        written = write_products_for(built.products, tmp_path, "meeting", artifact="txt")
+        # `.txt` 永远是合并文本（不按段落排版）；产物决策只看 artifact，
+        # 不因为“恰好有时间戳”就多写一个 srt。
         assert written.txt_path.read_text(encoding="utf-8").strip() == "只有文本，没有时间轴"
-        assert "甲" in written.srt_path.read_text(encoding="utf-8")
+        assert written.srt_path is None
+        assert not (tmp_path / "meeting.srt").exists()
 
     def test_render_layer_alone_never_invents_a_body(self, tmp_path):
         products = render_products("只有文本", [], [], merged_text_before_glossary="只有文本")

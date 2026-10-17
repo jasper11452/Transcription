@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import pytest
-
 from transcript_reimagined.ingest.chunking import MIN_GAP_FOR_CUT_S, MIN_INNER_S, plan_chunks
 
 DURATION = 300.0

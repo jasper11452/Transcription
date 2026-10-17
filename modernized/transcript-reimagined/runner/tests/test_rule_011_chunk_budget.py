@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import pytest
-
 from transcript_reimagined.ingest.chunking import plan_chunks
 
 #: 判据里的 20 分钟录音：四段语音 + 三段 1.0–2.0s 静音

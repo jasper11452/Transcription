@@ -78,8 +78,10 @@ FORBIDDEN_MODULES = frozenset(
 ALLOWED_IMPORTS_BY_MODULE = {
     "__init__.py": {
         "__future__",
+        "transcript_reimagined.ingest.audio",
         "transcript_reimagined.ingest.chunking",
         "transcript_reimagined.ingest.plan",
+        "transcript_reimagined.ingest.vad",
     },
     "chunking.py": {
         "__future__",
@@ -87,10 +89,25 @@ ALLOWED_IMPORTS_BY_MODULE = {
         "transcript_reimagined.ingest.plan",
     },
     "plan.py": {"__future__", "dataclasses"},
-    # Phase 3：audio 用 pathlib + collections.abc +（落地时）subprocess，
-    # vad 用 pathlib + typing（模型懒加载）
-    "audio.py": {"__future__", "collections.abc", "pathlib", "transcript_reimagined.domain.models"},
-    "vad.py": {"__future__", "pathlib", "typing"},
+    # Phase 3：audio 是唯一碰 ffmpeg 的模块；vad 懒加载 mlx-audio。
+    "audio.py": {
+        "__future__",
+        "collections.abc",
+        "contextlib",
+        "json",
+        "pathlib",
+        "shutil",
+        "subprocess",
+        "transcript_reimagined.domain",
+    },
+    "vad.py": {
+        "__future__",
+        "collections.abc",
+        "mlx_audio.vad",
+        "pathlib",
+        "transcript_reimagined.domain",
+        "typing",
+    },
 }
 
 
@@ -146,25 +163,31 @@ def test_every_import_is_stdlib_domain_or_in_package(path: Path) -> None:
             )
             continue
         top = module.split(".")[0]
-        assert top in sys.stdlib_module_names, (
-            f"{path.name}:{lineno} 导入了非 stdlib 模块 `{module}`；本包零第三方依赖"
-        )
+        if top == "mlx_audio":
+            # 唯一放行的第三方依赖：VAD 的模型运行时，且只在 vad.py 里懒加载。
+            assert path.name == "vad.py", (
+                f"{path.name}:{lineno} 导入了 `{module}`；只有 vad.py 可以依赖 mlx-audio"
+            )
+            continue
         if top == "transcript_reimagined":
-            assert module.startswith("transcript_reimagined.domain."), (
-                f"{path.name}:{lineno} 导入了 `{module}`；ingest 只许依赖 domain"
-            )
-        else:
-            assert top != "transcript", (
-                f"{path.name}:{lineno} 用绝对路径导入遗留包 `{module}`；"
-                "包内一律相对导入，绝不能把重建版接到遗留实现上"
-            )
+            assert module == "transcript_reimagined.domain" or module.startswith(
+                "transcript_reimagined.domain."
+            ), f"{path.name}:{lineno} 导入了 `{module}`；ingest 只许依赖 domain"
+            continue
+        assert top in sys.stdlib_module_names, (
+            f"{path.name}:{lineno} 导入了非 stdlib 模块 `{module}`；本包只允许 domain 与 mlx-audio"
+        )
+        assert top != "transcript", (
+            f"{path.name}:{lineno} 用绝对路径导入遗留包 `{module}`；"
+            "包内一律相对导入，绝不能把重建版接到遗留实现上"
+        )
 
 
 @pytest.mark.parametrize("path", SOURCE_FILES, ids=lambda p: p.name)
 def test_no_io_modules_in_the_pure_planning_layer(path: Path) -> None:
-    """Phase 1 落地的那两个模块必须是纯的（Phase 3 的模块有 I/O 权限，但尚未实现）。"""
+    """纯函数约束只覆盖 chunking/plan；audio/vad 有 I/O 权限，由规则卡逐条放行。"""
     if path.name not in PURE_MODULES:
-        pytest.skip(f"{path.name} 属 Phase 3，I/O 权限由规则卡逐条放行")
+        pytest.skip(f"{path.name} 是有 I/O 权限的模块；纯函数约束只覆盖 chunking/plan")
     for module, lineno in _imports_of(path):
         top = module.split(".")[0]
         assert top not in FORBIDDEN_MODULES, (
@@ -193,16 +216,18 @@ def test_import_set_is_exactly_whitelisted(path: Path) -> None:
 
 
 def test_package_declares_no_third_party_runtime_dependency() -> None:
-    """``dependencies`` 里不允许出现第三方库；同仓 workspace 依赖不算第三方。
+    """运行时依赖白名单：``mlx-audio`` 是 VAD 的唯一第三方依赖。
 
     切片规划本身零依赖。``transcript-domain`` 是 PEP 420 命名空间下的**兄弟
     包**（同一个 workspace 的成员），不是外部依赖 —— 架构 §7b 的范围纪律禁止的
-    是引入第三方库，不是禁止成员互相引用。反过来若这里出现任何不以
-    ``transcript-`` 开头的东西，才是真的破了纪律。
+    是引入第三方库，不是禁止成员互相引用。Phase 3 按规则放行 ``mlx-audio``
+    （VAD 模型运行时，懒加载），其余任何第三方都应视为偏离。
     """
     project = tomllib.loads((PACKAGE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    third_party = [d for d in project["project"]["dependencies"] if not d.startswith("transcript-")]
-    assert third_party == [], f"出现了第三方运行时依赖：{third_party}"
+    third_party = sorted(
+        d for d in project["project"]["dependencies"] if not d.startswith("transcript-")
+    )
+    assert [d.split(">")[0].split("=")[0] for d in third_party] == ["mlx-audio"]
     assert project["project"]["requires-python"] == ">=3.12,<3.13"
 
 
@@ -316,18 +341,19 @@ def test_plan_chunks_with_agrees_with_the_keyword_version() -> None:
     ]
 
 
-def test_phase_three_modules_are_explicit_stubs_not_silent_noops() -> None:
-    """Phase 3 的模块调用即 ``NotImplementedError``，绝不返回静默的错误结果。"""
+def test_phase_three_modules_are_implemented_not_stubs() -> None:
+    """Phase 3 的模块已落地：坏输入要给出明确的 InputError，而不是 NotImplementedError。"""
+    from transcript_reimagined.domain import InputError
+
     from transcript_reimagined.ingest import audio, vad
 
-    with pytest.raises(NotImplementedError):
-        audio.probe("whatever.m4a")
-    with pytest.raises(NotImplementedError):
-        vad.merge_gaps([(0.0, 1.0)], max_gap_s=0.4)
+    with pytest.raises(InputError, match="不存在"):
+        audio.probe("/definitely/missing.wav")
+    assert vad.merge_gaps([(0.0, 1.0)], max_gap_s=0.4) == [(0.0, 1.0)]
 
 
 def test_public_api_is_exactly_what_the_readme_documents() -> None:
-    """包根只导出 Phase 1 已实现的东西 —— 不导出会抛 ``NotImplementedError`` 的符号。"""
+    """包根导出全部已实现能力（Phase 3 之后 audio / vad 也在其中）。"""
     import transcript_reimagined.ingest as ingest
 
     assert set(ingest.__all__) == {
@@ -337,9 +363,12 @@ def test_public_api_is_exactly_what_the_readme_documents() -> None:
         "MIN_INNER_S",
         "plan_chunks",
         "plan_chunks_with",
+        "probe",
+        "require_ffmpeg",
+        "verify",
+        "to_wav16k",
+        "to_mp3_64k",
+        "cut",
+        "speech_spans",
+        "merge_gaps",
     }
-    for phase_three_symbol in ("probe", "speech_spans", "verify", "to_wav16k", "cut"):
-        assert not hasattr(ingest, phase_three_symbol), (
-            f"`{phase_three_symbol}` 属 Phase 3 且调用即抛 NotImplementedError，"
-            "不该从包根导出（会让人误以为已经可用）"
-        )

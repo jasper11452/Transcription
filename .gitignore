@@ -40,3 +40,8 @@ modernized/**/.pytest_cache/
 modernized/**/.ruff_cache/
 modernized/**/__pycache__/
 analysis/**/__pycache__/
+
+# 前端构建产物必须随包提交：服务启动的硬门槛（NFR-7 / RULE-068）。
+# 上面的通用 `dist/` 规则会把它一并忽略，这里显式放行。
+!modernized/transcript-reimagined/web/src/transcript_reimagined/web/static/dist/
+!modernized/transcript-reimagined/web/src/transcript_reimagined/web/static/dist/**

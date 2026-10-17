@@ -134,7 +134,16 @@ def test_dataclass_shape_matches_legacy(legacy, name: str) -> None:
     def surface(cls):
         return sorted(k for k in vars(cls) if not k.startswith("__"))
 
-    assert shape(old) == shape(new)
+    old_fields, old_frozen = shape(old)
+    new_fields, new_frozen = shape(new)
+    if name == "TranscriptResult":
+        # D8：重建版在末尾追加 `words`（架构 v2：引擎只交原始词级时间戳，
+        # 对齐由 orchestrate 调 post.align）。其余字段必须逐字节一致。
+        assert new_fields[:-1] == old_fields
+        assert new_fields[-1][0] == "words"
+    else:
+        assert new_fields == old_fields
+    assert old_frozen == new_frozen
     assert surface(old) == surface(new)
 
 
@@ -154,9 +163,16 @@ def test_shifted_and_public_signatures_match_legacy(legacy) -> None:
         "t", [legacy["models"].Segment(0.0, 1.0, "x", speaker="s")], "zh", 1.0, 0.1, "e", True
     )
     new_res = new_models.TranscriptResult(
-        "t", [new_models.Segment(0.0, 1.0, "x", speaker="s")], "zh", 1.0, 0.1, "e", True
+        "t", [new_models.Segment(0.0, 1.0, "x", speaker="s")], "zh", 1.0, 0.1, "e", True,
+        [new_models.Word("a", 0.0, 0.5)],
     )
-    assert dataclasses.asdict(old_res.shifted(9.0)) == dataclasses.asdict(new_res.shifted(9.0))
+    old_dict = dataclasses.asdict(old_res.shifted(9.0))
+    new_dict = dataclasses.asdict(new_res.shifted(9.0))
+    # D8：`words` 是新增字段，其余字段必须与 legacy 逐字节一致。
+    assert new_dict.pop("words") == [
+        {"text": "a", "start": 9.0, "end": 9.5, "probability": None}
+    ]
+    assert old_dict == new_dict
 
     import inspect
 

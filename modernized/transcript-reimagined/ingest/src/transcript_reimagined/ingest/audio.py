@@ -1,30 +1,28 @@
-"""audio —— 探测 · 归一化 · 切。
+"""音频前置：探测、归一化、切片。
 
-**Phase 3 才落地**（``REIMAGINED_ARCHITECTURE.md`` §5：``ingest/`` 在 Phase 1 只含
-``chunking.py``）。本模块只固化签名、常量与不变量，不提供半成品实现 ——
-调用它会得到明确的 ``NotImplementedError``，而不是一个静默出错的结果。
+契约（来自 `qwen3-asr-audio-input.md`）：
+- 离线工作副本必须 **16 kHz / 单声道 / pcm_s16le**；
+- 在线工作副本走 **mp3 64k 单声道**（mai-transcribe-2 会直接拒 m4a；mp3 体积小到能整段送）；
+- **原文件永不改动**，工作副本是临时品（NFR-2）。
 
-归属理由（§2）：``audio`` 是**唯一碰 ffmpeg 的地方**，``probe`` 的事实
-（``AudioInfo``）是切片规划的输入。本包不做落盘决策（产物位置在 ``orchestrate``），
-但工作副本本身是 ``ingest`` 的产物（临时目录，结束即删 —— NFR-2：原文件只读）。
+任何一步失败都必须抛 InputError，不许返回空结果冒充成功。
 
-Phase 3 要满足的规则（规则卡 `BUSINESS_RULES.md`）：
-- ``RULE-050`` 输入文件资格检查（``probe``：存在、非空、有音轨、时长可判定且非零）
-- ``RULE-049`` 工作副本契约与校验（``verify``：ffmpeg 没报错 ≠ 文件正确）
-
-**安全前置项（架构 §6，P6 之前必须落地，此处先记）**：ffmpeg/ffprobe 的
-位置参数前必须加 ``--``（评估 CWE-88）。当前不可达，但一旦 CLI 入口能传相对名就可达。
+重建自 ``legacy/transcript/src/transcript/audio.py``。规则：
+`RULE-049`（工作副本契约与校验）、`RULE-050`（输入资格检查）。
+**安全加固（已署名）**：位置参数前加 ``--``（CWE-88），并给外部命令加超时（NFR-9）。
 """
 
 from __future__ import annotations
 
+import contextlib
+import json
+import shutil
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
-from ..domain.models import AudioInfo
+from transcript_reimagined.domain import AudioInfo, InputError
 
-# 归一化参数：契约来自 `qwen3-asr-audio-input.md`（legacy `audio.py:23-24`）。
-# 离线工作副本必须 16 kHz / 单声道 / pcm_s16le；在线走 mp3 64k 单声道。
 WAV_ARGS: tuple[str, ...] = ("-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le")
 MP3_ARGS: tuple[str, ...] = ("-ac", "1", "-ar", "16000", "-c:a", "libmp3lame", "-b:a", "64k")
 
@@ -41,21 +39,31 @@ CUT_TIMEOUT_S = 300.0
 FFMPEG_BINARIES: tuple[str, ...] = ("ffmpeg", "ffprobe")
 
 
+def _run(cmd: Sequence[str], *, what: str, timeout: float) -> subprocess.CompletedProcess[str]:
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=timeout)
+    except FileNotFoundError as exc:
+        raise InputError(f"缺少外部命令：{cmd[0]}（{what}）") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise InputError(f"{what}超时（>{timeout:.0f}s）") from exc
+    if proc.returncode != 0:
+        tail = " / ".join(proc.stderr.strip().splitlines()[-3:])[:400]
+        raise InputError(f"{what}失败：{tail or f'退出码 {proc.returncode}'}")
+    return proc
+
+
 def require_ffmpeg() -> None:
     """缺少 ffmpeg/ffprobe 时**在开工之前**报错（`RULE-050` 的边界情形）。
 
     抛 ``InputError``（致命、不重试）—— 重试不会让一个没装的二进制出现。
     """
-    raise NotImplementedError(
-        "audio.require_ffmpeg 属 Phase 3（RULE-050）；Phase 1 的 ingest 只含 chunking"
-    )
+    for tool in FFMPEG_BINARIES:
+        if not shutil.which(tool):
+            raise InputError(f"缺少 {tool}，请先安装 ffmpeg")
 
 
 def probe(path: Path | str) -> AudioInfo:
     """用 ffprobe 读事实：时长、音轨、编码、采样率、声道（`RULE-050`）。
-
-    命令形态（架构 §3.5）：``ffprobe -v error -print_format json -show_format -show_streams <src>``
-    （Phase 3 实现时位置参数前加 ``--``）。
 
     不变量：
     - 时长取 format 级与 stream 级的**最大值**；
@@ -64,49 +72,165 @@ def probe(path: Path | str) -> AudioInfo:
       **不调用任何引擎、不花钱**；
     - 原文件只读（NFR-2）：本函数只读不写。
     """
-    raise NotImplementedError("audio.probe 属 Phase 3（RULE-050）；Phase 1 的 ingest 只含 chunking")
+    src = Path(path)
+    if not src.exists():
+        raise InputError(f"文件不存在：{src}")
+    if src.stat().st_size == 0:
+        raise InputError(f"文件为空：{src}")
+
+    proc = _run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            "--",
+            str(src),
+        ],
+        what=f"探测 {src.name}",
+        timeout=PROBE_TIMEOUT_S,
+    )
+    try:
+        data = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise InputError(f"ffprobe 输出无法解析：{src.name}") from exc
+
+    streams = data.get("streams") or []
+    audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
+    duration = 0.0
+    for source in (data.get("format") or {}, audio or {}):
+        for key in ("duration", "Duration"):
+            with contextlib.suppress(TypeError, ValueError):
+                duration = max(duration, float(source.get(key) or 0))
+
+    info = AudioInfo(
+        path=src,
+        duration=duration,
+        size_bytes=src.stat().st_size,
+        codec=(audio or {}).get("codec_name"),
+        sample_rate=int((audio or {}).get("sample_rate") or 0) or None,
+        channels=(audio or {}).get("channels"),
+        has_audio=audio is not None,
+    )
+    if not info.has_audio:
+        raise InputError(f"没有音频轨：{src.name}（只有视频或空容器都算不合格输入）")
+    if info.duration <= 0:
+        raise InputError(f"时长无法确定或为零：{src.name}")
+    return info
+
+
+def _normalize(src: Path, dst: Path, codec_args: Sequence[str], *, what: str) -> Path:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(src),
+            "-map",
+            "0:a:0",
+            "-vn",
+            *codec_args,
+            "--",
+            str(dst),
+        ],
+        what=what,
+        timeout=NORMALIZE_TIMEOUT_S,
+    )
+    if not dst.exists() or dst.stat().st_size == 0:
+        raise InputError(f"{what}产出空文件：{dst.name}")
+    return dst
 
 
 def to_wav16k(src: Path | str, dst: Path | str) -> Path:
-    """归一化成离线工作副本（16 kHz / 单声道 / pcm_s16le），返回产物路径。"""
-    raise NotImplementedError(
-        "audio.to_wav16k 属 Phase 3（RULE-049 / RULE-050）；Phase 1 的 ingest 只含 chunking"
+    """离线工作副本。"""
+    return _normalize(
+        Path(src), Path(dst), WAV_ARGS, what=f"归一化为 16k wav（{Path(src).name}）"
     )
 
 
 def to_mp3_64k(src: Path | str, dst: Path | str) -> Path:
-    """归一化成在线工作副本（16 kHz / 单声道 / mp3 64k），返回产物路径。"""
-    raise NotImplementedError(
-        "audio.to_mp3_64k 属 Phase 3（RULE-049 / RULE-050）；Phase 1 的 ingest 只含 chunking"
+    """在线工作副本。"""
+    return _normalize(
+        Path(src), Path(dst), MP3_ARGS, what=f"归一化为 64k mp3（{Path(src).name}）"
     )
 
 
 def cut(
     src: Path | str,
     dst: Path | str,
+    start: float | None = None,
+    end: float | None = None,
     *,
-    start: float,
-    end: float,
-    codec_args: Sequence[str],
+    kind: str = "wav16k",
+    codec_args: Sequence[str] | None = None,
 ) -> Path:
-    """按 ``[start, end)`` 切出一片（重编码以拿到精确边界）。
+    """从已归一化的文件上切一段（切片单位）。重编码以保证边界精确。
 
-    命令形态（架构 §3.5）：``ffmpeg -y -hide_banner -loglevel error -ss <start> -to <end> -i <src> <codec> <dst>``。
-    调用方是 ``orchestrate``，输入是 ``chunking.plan_chunks`` 的计划 —— 这就是
-    ``ingest`` 与 ``orchestrate`` 之间那条边的实体。
+    同时接受两种调用形态：
+    - 遗留形态 ``cut(src, dst, start, end, kind="wav16k")``；
+    - 脚手架形态 ``cut(src, dst, start=..., end=..., codec_args=WAV_ARGS)``。
     """
-    raise NotImplementedError(
-        "audio.cut 属 Phase 3（RULE-011 的物理不变量在切片侧成立，切出精确边界在这里）"
+    if start is None or end is None:
+        raise InputError("切片区间非法：start/end 不能为空")
+    if end <= start:
+        raise InputError(f"切片区间非法：{start}–{end}")
+    if codec_args is None:
+        codec_args = {"wav16k": WAV_ARGS, "mp3_64k": MP3_ARGS}.get(kind)
+        if codec_args is None:
+            raise InputError(f"未知的切片类型：{kind}")
+    dst = Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-ss",
+            f"{start:.3f}",
+            "-to",
+            f"{end:.3f}",
+            "-i",
+            str(src),
+            *codec_args,
+            "--",
+            str(dst),
+        ],
+        what=f"切片 {start:.1f}–{end:.1f}s",
+        timeout=CUT_TIMEOUT_S,
     )
+    if not dst.exists() or dst.stat().st_size == 0:
+        raise InputError(f"切片产出空文件：{dst.name}")
+    return dst
 
 
 def verify(path: Path | str, kind: str) -> AudioInfo:
-    """校验工作副本真的符合契约（`RULE-049`）。
+    """校验工作副本是否真的符合契约（`RULE-049`）。
 
     「ffmpeg 没报错」**不是**证据：以**重新探测**产物为准，codec / 采样率 / 声道
     三者逐个比对，任一不符（例如 ``channels=2!=1``）就抛 ``InputError``；
     产物为空或不存在同样抛错。``kind`` 未知时抛错而不是跳过校验。
     """
-    raise NotImplementedError(
-        "audio.verify 属 Phase 3（RULE-049）；Phase 1 的 ingest 只含 chunking"
-    )
+    expect = EXPECTED_CODEC_BY_KIND.get(kind)
+    if expect is None:
+        raise InputError(f"未知的校验类型：{kind}")
+    info = probe(path)
+    codec, rate, channels = expect
+    problems = []
+    if info.codec != codec:
+        problems.append(f"codec={info.codec}≠{codec}")
+    if info.sample_rate != rate:
+        problems.append(f"sample_rate={info.sample_rate}≠{rate}")
+    if info.channels != channels:
+        problems.append(f"channels={info.channels}≠{channels}")
+    if problems:
+        raise InputError(f"{Path(path).name} 不符合 {kind} 契约：" + "，".join(problems))
+    return info

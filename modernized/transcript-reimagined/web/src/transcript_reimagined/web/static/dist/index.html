@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>转录 · Transcript</title>
+    <script src="/static/dist/theme.js"></script>
+    <script type="module" crossorigin src="/static/dist/assets/main-DPAV508U.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/dist/assets/input-CgjsbLmT.js">
+    <link rel="stylesheet" crossorigin href="/static/dist/assets/input-Ca1BBb4K.css">
+  </head>
+  <body class="flex min-h-dvh flex-col lg:flex-row">
+    <!-- 左侧栏：品牌、主题、导航、历史都在栏内；宽屏常驻整高，窄屏回落成顶部一段 -->
+    <aside class="flex shrink-0 flex-col border-b border-hairline lg:sticky lg:top-0 lg:h-dvh lg:w-72 lg:border-b-0 lg:border-r">
+      <div class="flex h-14 items-center justify-between gap-3 px-5">
+        <a href="/" class="font-mono text-[13px] tracking-[0.18em] text-ink">TRANSCRIPT</a>
+        <button id="themeToggle" type="button" class="theme-toggle" aria-label="切换到浅色模式">浅色模式</button>
+      </div>
+
+      <nav class="px-3">
+        <a href="/" aria-current="page" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-hover">＋ 新建转录</a>
+      </nav>
+
+      <!-- 历史列表自己滚：宽屏撑满栏的剩余高度，窄屏限高 45vh -->
+      <div class="mt-6 flex flex-col px-3 lg:min-h-0 lg:flex-1">
+        <p class="eyebrow-mono px-3 pb-3">最近任务</p>
+        <div id="taskList" class="max-h-[45vh] overflow-y-auto lg:min-h-0 lg:max-h-none lg:flex-1"></div>
+      </div>
+
+      <p class="eyebrow-mono mt-4 hidden px-5 pb-4 lg:block">离线优先 · 文件不出本机</p>
+    </aside>
+
+    <!-- 主区：只留办事的表单，宽度收窄到单栏 -->
+    <div class="flex min-h-0 flex-1 flex-col">
+      <main class="mx-auto w-full max-w-3xl flex-1 px-6 pb-24">
+        <div class="pt-8">
+          <h1 class="text-xl leading-7 tracking-heading">新建转录</h1>
+
+          <form id="taskForm" class="mt-5">
+            <label
+              id="dropZone"
+              for="file"
+              class="flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-hairline bg-card px-6 py-16 text-center transition-colors hover:border-canvas-mid focus-within:ring-1 focus-within:ring-ring"
+            >
+              <span class="text-sm text-body">拖入音视频，或点击选择</span>
+              <span id="fileHint" class="font-mono text-[11px] tracking-[0.08em] text-mute">m4a · mp3 · wav · mp4</span>
+              <div id="mediaPreview" hidden class="mt-3 w-full max-w-xl"></div>
+              <input
+                id="file"
+                name="file"
+                type="file"
+                accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.flac,.ogg,.mp4,.mov"
+                class="sr-only"
+              />
+            </label>
+
+            <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <label for="sourcePath" class="eyebrow-mono">或粘贴路径</label>
+              <input
+                id="sourcePath"
+                name="source_path"
+                type="text"
+                placeholder="/Users/you/meeting.m4a"
+                class="h-9 min-w-56 flex-1 rounded-lg border border-hairline bg-canvas-soft px-3 text-sm text-foreground transition-colors placeholder:text-mute focus:border-canvas-mid focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <!-- 两个会改变结果的选项 + 唯一的动作，同一行收口 -->
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-t border-hairline pt-5">
+              <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <div
+                  id="modeLever"
+                  role="radiogroup"
+                  aria-label="模式"
+                  class="flex w-fit rounded-full border border-hairline bg-canvas-soft p-1"
+                >
+                  <label class="cursor-pointer rounded-full px-5 py-1.5 text-sm text-body transition-colors has-[input:checked]:bg-ink has-[input:checked]:text-canvas">
+                    <input type="radio" name="mode" value="offline" checked class="sr-only" />
+                    离线
+                  </label>
+                  <label class="cursor-pointer rounded-full px-5 py-1.5 text-sm text-body transition-colors has-[input:checked]:bg-ink has-[input:checked]:text-canvas">
+                    <input type="radio" name="mode" value="online" class="sr-only" />
+                    在线
+                  </label>
+                </div>
+
+                <input type="hidden" name="artifact" value="srt" />
+              </div>
+
+              <button
+                id="submit"
+                type="submit"
+                class="h-11 w-full rounded-full bg-ink px-8 text-sm text-canvas transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-ink-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+              >
+                开始离线转录
+              </button>
+            </div>
+
+            <p id="modeHint" class="mt-3 text-sm text-mute">本机跑，不联网，不花钱。</p>
+
+            <!-- 密钥只在选在线时出现；离线永远看不到它 -->
+            <div id="credentials" hidden class="mt-5 space-y-3 rounded-lg border border-hairline bg-card p-4">
+              <p class="text-sm text-body">在线密钥</p>
+              <div id="keyFields"></div>
+            </div>
+
+            <details class="mt-5 rounded-lg border border-hairline">
+              <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-body [&::-webkit-details-marker]:hidden">
+                更多设置
+                <span class="eyebrow-mono">语言 · 引擎</span>
+              </summary>
+              <div class="grid gap-5 border-t border-hairline px-4 py-4 sm:grid-cols-2">
+                <div class="space-y-2.5">
+                  <label for="language" class="eyebrow-mono">语言</label>
+                  <select id="language" class="field-select h-10 w-full rounded-lg border border-hairline bg-canvas-soft py-2 pl-4 pr-10 text-sm text-foreground focus:border-canvas-mid focus:outline-none">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                    <option value="auto">自动</option>
+                  </select>
+                </div>
+
+                <div id="engineField" hidden class="space-y-2.5">
+                  <label for="onlineEngine" class="eyebrow-mono">引擎</label>
+                  <select id="onlineEngine" class="field-select h-10 w-full rounded-lg border border-hairline bg-canvas-soft py-2 pl-4 pr-10 text-sm text-foreground focus:border-canvas-mid focus:outline-none">
+                  </select>
+                </div>
+
+                <div class="space-y-2 sm:col-span-2">
+                  <label for="diarEnabled" class="flex items-center gap-2 text-sm text-body">
+                    <input id="diarEnabled" type="checkbox" class="h-4 w-4 rounded border-hairline" />
+                    说话人分离（仅离线）
+                  </label>
+                  <p class="text-xs leading-5 text-mute">开启后给每个段落加 speaker_N 标签，txt 与 srt 都会输出；在线引擎不提供说话人。</p>
+                  <p id="diarMsg" class="text-xs text-mute"></p>
+                </div>
+              </div>
+            </details>
+
+            <!-- 走片进度：sunset 橙作为唯一的运行时 accent -->
+            <section id="progressDeck" aria-label="走片进度" hidden class="mt-5 border-t border-hairline pt-5">
+              <div class="h-1 overflow-hidden rounded-full bg-canvas-soft">
+                <div id="progressBar" class="h-full w-0 rounded-full bg-sunset transition-all duration-500"></div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                <p id="progressText" class="text-sm text-mute"></p>
+                <a id="progressLink" class="font-mono text-[11px] uppercase tracking-[0.14em] text-body underline-offset-4 transition-colors hover:text-ink hover:underline" href="#">查看任务 →</a>
+              </div>
+              <p class="mt-3 text-xs text-mute">完成后会显示文稿和字幕的实际位置。</p>
+            </section>
+          </form>
+        </div>
+      </main>
+
+      <div id="root"></div>
+    </div>
+  </body>
+</html>

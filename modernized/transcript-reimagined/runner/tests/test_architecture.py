@@ -25,7 +25,22 @@ PACKAGE_ROOT = SRC / "transcript_reimagined"
 #: ``transcript_reimagined`` 命名空间，只给 runner/src 会让 domain/ingest/post
 #: 变成未解析的外部包。这里与 CLAUDE.md 里那条 lint-imports 命令保持同一组路径。
 WORKSPACE = ROOT.parent
-MEMBER_SRC = [WORKSPACE / name / "src" for name in ("domain", "ingest", "post", "runner")]
+MEMBER_SRC = [
+    WORKSPACE / name / "src"
+    for name in (
+        "domain",
+        "config",
+        "state",
+        "ingest",
+        "post",
+        "diar",
+        "engines",
+        "summarize",
+        "orchestrate",
+        "web",
+        "runner",
+    )
+]
 
 RUNNER = "runner"
 POST = "post"

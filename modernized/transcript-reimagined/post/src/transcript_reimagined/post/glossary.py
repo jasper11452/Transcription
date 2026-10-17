@@ -147,7 +147,7 @@ def cap_hot_words_for_summary(words: list[str]) -> list[str]:
     ]
 
 
-def load_glossary(path: "str | Path") -> list[GlossaryRule]:
+def load_glossary(path: str | Path) -> list[GlossaryRule]:
     """从文件读词表；文件不存在返回空列表（不报错）—— 与 legacy 一致。
 
     `RULE-060` 的边界：缺失文件不是错误，用户不写词表是正常用法。
@@ -156,6 +156,18 @@ def load_glossary(path: "str | Path") -> list[GlossaryRule]:
     if not p.exists():
         return []
     return parse_glossary(p.read_text(encoding="utf-8"))
+
+
+def load_hot_words(path: str | Path) -> list[str]:
+    """只读词表里的**裸热词**（不含规则的正确写法）。
+
+    与 `load_glossary` 分开：裸词是给引擎的提示词，规则是确定性替换；
+    `hotwords()` 负责把两者拼成最终列表（RULE-021）。
+    """
+    p = Path(path)
+    if not p.exists():
+        return []
+    return parse_hot_words(p.read_text(encoding="utf-8"))
 
 
 def apply_rules(text: str, rules: list[GlossaryRule]) -> tuple[str, list[Change]]:

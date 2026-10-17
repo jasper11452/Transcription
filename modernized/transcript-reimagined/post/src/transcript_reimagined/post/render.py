@@ -51,6 +51,7 @@ def to_srt(segments: list[Segment], *, comment_lines: list[str] | None = None) -
     - 有注释时以 `# ` 前缀的注释块开头，但没有存活段落时返回空串（注释一并丢弃）。
     """
     bodies: list[str] = []
+    has_speaker = any(seg.speaker for seg in segments)
     for seg in segments:
         text = seg.text.strip()
         if not text:
@@ -58,7 +59,13 @@ def to_srt(segments: list[Segment], *, comment_lines: list[str] | None = None) -
         if seg.end < seg.start:
             raise ValueError(f"时间倒序：{seg.start} → {seg.end}（{text[:20]}）")
         start, end = fmt_timestamp(seg.start), fmt_timestamp(seg.end)
-        bodies.append(f"{start} --> {end}\n{wrap_srt_line(text)}")
+        prefix = ""
+        if seg.speaker:
+            prefix = f"[{seg.speaker}] "
+        elif has_speaker:
+            # 与 `to_txt` 一致：同一份产物里不要一半有标签一半没有。
+            prefix = "[?] "
+        bodies.append(f"{start} --> {end}\n{wrap_srt_line(prefix + text)}")
 
     if not bodies:
         return ""

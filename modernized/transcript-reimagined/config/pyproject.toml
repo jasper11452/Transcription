@@ -1,0 +1,37 @@
+[project]
+name = "transcript-config"
+version = "0.1.0"
+description = "transcript 重建版 · config：配置装载、凭据掩码、用户文件的原子写"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+# `python-dotenv` 是遗留系统已有的依赖（不是新增）；用它保留 .env 的注释、
+# 引号与 export 语义，自己写解析器会引入新的行为差异。
+dependencies = [
+    "python-dotenv>=1.0",
+    "transcript-domain",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcript_reimagined/config"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.uv.sources]
+transcript-domain = { workspace = true }
