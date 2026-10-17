@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+
+# 本机状态库
+state.db
+state.db-wal
+state.db-shm
+uploads/
+
+# macOS
+.DS_Store
+.idea/
+.vscode/

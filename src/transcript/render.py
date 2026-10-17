@@ -1,0 +1,88 @@
+"""产物渲染：txt / srt。
+
+SRT 的两个硬要求：时间格式合法（HH:MM:SS,mmm）、时间单调不减。
+外加一条本工具的要求：**错误文本绝不混进产物**——宁可任务失败。
+"""
+
+from __future__ import annotations
+
+from .models import Segment, fmt_timestamp
+
+# SRT 单条字幕的字符上限：再长会被播放器截断或压成多行
+MAX_SRT_LINE_CHARS = 42
+
+
+def _wrap(text: str, limit: int = MAX_SRT_LINE_CHARS) -> str:
+    """按字符宽度折行，最多两行。中文没有空格，只能按字数折。"""
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    mid = len(text) // 2
+    # 优先在标点处断开，否则按中点硬切
+    for i in range(mid, min(len(text), mid + 10)):
+        if text[i] in "，,。；;、：:！？!?":
+            return text[: i + 1].strip() + "\n" + text[i + 1 :].strip()
+    return text[:mid].strip() + "\n" + text[mid:].strip()
+
+
+def to_srt(segments: list[Segment], *, comment_lines: list[str] | None = None) -> str:
+    """段落 → SRT。空段落被跳过，时间不合法时抛错而不是写出坏字幕。"""
+    bodies: list[str] = []
+    for seg in segments:
+        text = seg.text.strip()
+        if not text:
+            continue
+        if seg.end < seg.start:
+            raise ValueError(f"时间倒序：{seg.start} → {seg.end}（{text[:20]}）")
+        start, end = fmt_timestamp(seg.start), fmt_timestamp(seg.end)
+        bodies.append(f"{start} --> {end}\n{_wrap(text)}")
+
+    # 编号必须在**输出之后**连续分配：跳过空段后 enumerate 下标会出现断档
+    blocks: list[str] = []
+    if comment_lines:
+        blocks.append("\n".join(f"# {line}" for line in comment_lines))
+    blocks.extend(f"{idx}\n{body}" for idx, body in enumerate(bodies, start=1))
+
+    if not bodies:
+        return ""
+    return "\n\n".join(blocks) + "\n"
+
+
+def to_txt(
+    text: str, segments: list[Segment] | None = None, *, comment_lines: list[str] | None = None
+) -> str:
+    """纯文本稿。有段落就按段落换行（便于对照），否则原样输出。
+
+    当段落带 speaker 标签时，同一说话人的连续段落合并成一块，前缀 [speaker_N]。
+    """
+    parts: list[str] = []
+    if comment_lines:
+        parts.extend(f"# {line}" for line in comment_lines)
+    if segments:
+        has_speaker = any(s.speaker for s in segments)
+        if has_speaker:
+            lines: list[str] = []
+            cur_spk: str | None = None
+            cur_texts: list[str] = []
+            for s in segments:
+                t = s.text.strip()
+                if not t:
+                    continue
+                spk = s.speaker or "?"
+                if spk != cur_spk:
+                    if cur_texts:
+                        lines.append(f"[{cur_spk}] {''.join(cur_texts)}")
+                    cur_spk, cur_texts = spk, [t]
+                else:
+                    cur_texts.append(t)
+            if cur_texts:
+                lines.append(f"[{cur_spk}] {''.join(cur_texts)}")
+            body = "\n".join(lines)
+        else:
+            body = "\n".join(s.text.strip() for s in segments if s.text.strip())
+    else:
+        body = text.strip()
+    if body:
+        parts.append(body)
+        parts.append("")
+    return "\n".join(parts) if parts else ""
