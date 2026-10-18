@@ -101,7 +101,8 @@ modernized/transcript-reimagined/
 从 **workspace 根**跑（不要在成员目录里跑）：
 
 ```bash
-uv run pytest                          # 全部断言（约 816）
+uv sync --all-packages                # 首次/改依赖后：安装全部成员（普通 uv sync 不够）
+uv run pytest                          # 全部断言（约 824）
 uv run pytest domain/tests             # 单个成员
 uv run pytest --list-rules             # 规则覆盖盘点
 uv run pytest --rule=RULE-072          # 只跑某条规则
@@ -158,6 +159,7 @@ npm test                    # 主题/壳层的 11 条 Node 测试
 | 症状 | 原因 | 正确做法 |
 |---|---|---|
 | `ModuleNotFoundError: transcript_reimagined.domain` | 在成员目录里跑 pytest，或 `pythonpath` ini 没生效 | 从 **workspace 根**跑；路径注入在 `conftest_support/paths.py` |
+| 安装后 `import transcript_reimagined.cli` 失败 | 成员 wheel 包根写成了子包目录；editable 安装只把该目录放进 `sys.path` | 包根统一写 `src/transcript_reimagined`（PEP 420 命名空间根）；`uv sync --all-packages` |
 | `option names {'--rule'} already added` | 多个成员各注册一份 pytest 选项 | 只有 `conftest_support/rule_plugin.py` 一份 |
 | 测试收集报「同名模块」 | 跨成员有同名测试文件或同名 helper（`_fakes.py` 就踩过） | `--import-mode=importlib`；helper 用**成员前缀**命名（`orchestrate_fakes.py`、`web_fakes.py`） |
 | `from conftest import ...` 拿到错的夹具 | 根与成员 `conftest.py` 同名遮蔽 | 成员夹具放具名模块（`runner/tests/_fixtures.py`），别放 conftest |

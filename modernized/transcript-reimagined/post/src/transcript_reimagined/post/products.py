@@ -98,8 +98,16 @@ def render_products_for(
     ctx = context or RawContext()
     comments = change_comment(changes)
     seg_list = list(segments or [])
+    # 只有确实带说话人时才把 segments 交给 txt 渲染器：无说话人时传 None，
+    # 保持 legacy 的「合并文本原样一行」形态（逐字节等价）。Q8 要求 txt/srt
+    # 双产物一致输出 speaker；UAT 实测此前 txt 丢标签，就是这里传了 None。
+    has_speaker = any(s.speaker for s in seg_list)
 
-    txt = to_txt(final_text, None, comment_lines=comments) if "txt" in kinds else ""
+    txt = (
+        to_txt(final_text, seg_list if has_speaker else None, comment_lines=comments)
+        if "txt" in kinds
+        else ""
+    )
     srt = to_srt(seg_list, comment_lines=comments) if "srt" in kinds else ""
 
     raw: dict[str, Any] = {}

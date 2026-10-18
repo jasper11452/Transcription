@@ -16,3 +16,4 @@
 | D10 | 删除从未实例化的 Pydantic `SummaryContent` | 输出契约同时有 Pydantic 模型与手写 `[:80]`/`[:2000]` 两份实现 | 同一契约两处实现；只保留手写归一化，上限只有一套数字 | `summarize/tests/test_summary.py` |
 | D11 | 分片 payload 有 `segments` 时把 `text` 置空 | legacy 同时返回两份正文 | Q4 裁定：以 segments 为准，去掉冗余 text 以免歧义 | `state/tests/test_state_store.py` |
 | D12 | `Engine.transcribe` 新增 `duration_s` 入参，引擎不再自己 probe | legacy 的 dashscope 适配器直接调 `audio.probe` | 架构 v2 砍掉 `engines → ingest` 边；时长由 orchestrate 传入 | `engines/tests/test_dashscope.py` |
+| D13 | `language="auto"` 在编排层还原为 `None` | 页面把「自动」原样传给引擎；离线模型报 `Unsupported language: auto`，任务必失败 | UAT 实测的真实缺陷：「自动」选项原本完全不可用 | `orchestrate/tests/test_pipeline_details.py::test_auto_language_is_treated_as_auto_detect` |

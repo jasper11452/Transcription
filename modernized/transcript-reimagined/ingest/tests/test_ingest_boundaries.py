@@ -232,10 +232,16 @@ def test_package_declares_no_third_party_runtime_dependency() -> None:
 
 
 def test_packaging_targets_only_this_service() -> None:
-    """只打包本服务，不是整个重建版（``transcript_reimagined`` 是 PEP 420 命名空间）。"""
+    """只打包本服务，不是整个重建版（``transcript_reimagined`` 是 PEP 420 命名空间）。
+
+    包根必须写成命名空间根：本成员的 ``src/transcript_reimagined`` 里只有 ``ingest/``，
+    所以打包范围仍是本服务；但 editable 安装会把包根的父目录放进 sys.path，写成
+    ``src/transcript_reimagined/ingest`` 会让顶层命名空间无法与其他成员合并
+    （UAT 实测：安装后 ``import transcript_reimagined.cli`` 失败）。
+    """
     project = tomllib.loads((PACKAGE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     packages = project["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"]
-    assert packages == ["src/transcript_reimagined/ingest"]
+    assert packages == ["src/transcript_reimagined"]
 
 
 def test_imports_cleanly_in_an_isolated_interpreter() -> None:

@@ -1049,6 +1049,13 @@ function Detail({ initial, animate }: { initial: TaskDetail; animate: boolean })
   const [showPaths, setShowPaths] = useState(false)
   const [subtitleContent, setSubtitleContent] = useState('')
   const [copyState, setCopyState] = useState<'idle' | 'copying' | 'copied'>('idle')
+  // Q6：详情页的「停止中」是本地乐观态。服务端 payload 没有 cancelling 字段，
+  // 点停止后的 refresh 会把它抹掉；单独存，任务到终态再清。
+  const [stopping, setStopping] = useState(false)
+
+  useEffect(() => {
+    if (detail.task.is_terminal || detail.task.interrupted) setStopping(false)
+  }, [detail.task.is_terminal, detail.task.interrupted])
 
   useEffect(() => {
     const update = () => {
@@ -1126,7 +1133,7 @@ function Detail({ initial, animate }: { initial: TaskDetail; animate: boolean })
     }
   }
 
-  const t = detail.task
+  const t = stopping ? { ...detail.task, cancelling: true } : detail.task
   const busy = t.running || t.cancelling
   const failed = t.status === 'failed' || t.interrupted
   const done = t.status === 'done'
@@ -1184,7 +1191,11 @@ function Detail({ initial, animate }: { initial: TaskDetail; animate: boolean })
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-5">
-          <ProgressCard detail={detail} totalOverride={streamTotal} onCancel={() => void act(() => cancelTask(t.id))} />
+          <ProgressCard detail={{ ...detail, task: t }} totalOverride={streamTotal} onCancel={() => {
+            // Q6：先进入「停止中」，不等下一次轮询。
+            setStopping(true)
+            void act(() => cancelTask(t.id))
+          }} />
           <FilesCard task={t} content={subtitleText} onCopy={() => void copySubtitle()} copyState={copyState} onReveal={() => void act(() => revealPath(t.out_dir as string))} />
           {(t.txt_path || t.srt_path) && (
             <div className="px-1">

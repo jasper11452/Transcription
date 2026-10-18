@@ -23,6 +23,25 @@ def test_invalid_mode_or_artifact_is_rejected_before_any_work(env, tmp_path):  #
         pipeline.run(source, artifact="docx")
 
 
+def test_auto_language_is_treated_as_auto_detect(env):  # noqa: F811
+    """页面「自动」发送的是 "auto"；模型不认识它，编排层必须还原成 None。
+
+    UAT 实测：语言选「自动」时离线任务直接失败（`Unsupported language: auto`）。
+    """
+    config, store, source, _out = env
+
+    auto_engine = FakeEngine()
+    result = make_pipeline(config, store, auto_engine).run(
+        source, artifact="txt", language="auto"
+    )
+    assert result.status == "done"
+    assert auto_engine.languages and set(auto_engine.languages) == {None}
+
+    zh_engine = FakeEngine()
+    make_pipeline(config, store, zh_engine).run(source, artifact="txt", language="zh")
+    assert zh_engine.languages and set(zh_engine.languages) == {"zh"}
+
+
 def test_missing_input_fails_without_products(env, monkeypatch):  # noqa: F811
     config, store, source, out_dir = env
 

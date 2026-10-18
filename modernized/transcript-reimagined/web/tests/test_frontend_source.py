@@ -73,6 +73,7 @@ def test_frontend_fixes_are_present_in_source():
     assert "visibleModels" in task and "slice(0, 60)" in task  # Q2 先计数后截断
     assert "chunkTexts" in task  # Q4 segments 优先
     assert "t.interrupted" in task  # Q10 服务端状态
+    assert "setStopping(true)" in task and "stopping ?" in task  # Q6 详情页乐观态
     assert "t.interrupted" in sidebar and "cancelling: true" in sidebar  # Q6 / Q10
     # C8：config → API → UI 三处都能开启
     index = (FRONTEND / "index.html").read_text(encoding="utf-8")

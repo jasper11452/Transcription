@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 # `transcript` 安装在本仓 .venv 里，同名会让 `import transcript.chunking` 解析到
 # 遗留包 —— 那正是本服务最该避免的混淆（等价性对比要么显式引 legacy 路径，
 # 要么根本不引，见 tests/test_equivalence_legacy_chunking.py 的说明）。
-packages = ["src/transcript_reimagined/ingest"]
+packages = ["src/transcript_reimagined"]
 
 [dependency-groups]
 dev = [

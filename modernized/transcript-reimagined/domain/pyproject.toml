@@ -21,7 +21,10 @@ build-backend = "hatchling.build"
 # 安装在本仓的 .venv 里（site-packages 的 `transcript` + 根 `pyproject.toml`），
 # 同名会让 `import transcript.domain` 解析到遗留包。重建版用一个独占的顶层名，
 # 与遗留版并存且互不干扰。
-packages = ["src/transcript_reimagined/domain"]
+# 包根必须是命名空间根 `src/transcript_reimagined`，不能写成子包目录：editable
+# 安装会把包根的父目录放进 sys.path，写成 `.../domain` 时顶层命名空间无法与
+# 其他成员合并（UAT 实测：`import transcript_reimagined.cli` 会失败）。
+packages = ["src/transcript_reimagined"]
 
 [dependency-groups]
 dev = [

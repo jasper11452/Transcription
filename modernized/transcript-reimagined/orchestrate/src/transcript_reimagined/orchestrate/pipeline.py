@@ -157,6 +157,12 @@ class Pipeline:
         if artifact not in {"txt", "srt"}:
             raise FatalError(f"未知产物：{artifact}（只有 txt/srt）")
 
+        # 页面把「自动」编码成 "auto"，但模型只接受真实语言名/代码。
+        # 在编排边界统一还原成 None（= 让引擎自检），
+        # 否则离线路由会报 `Unsupported language: auto`（UAT 实测）。
+        if language is not None and language.strip().lower() in {"", "auto"}:
+            language = None
+
         src = Path(source).expanduser()
         try:
             info = audio_mod.probe(src)

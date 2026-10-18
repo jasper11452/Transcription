@@ -1411,6 +1411,9 @@ dev = [
 name = "transcript-post"
 version = "0.1.0"
 source = { editable = "post" }
+dependencies = [
+    { name = "transcript-domain" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1420,6 +1423,7 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "transcript-domain", editable = "domain" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1467,6 +1471,11 @@ dev = [
 name = "transcript-runner"
 version = "0.1.0"
 source = { editable = "runner" }
+dependencies = [
+    { name = "transcript-domain" },
+    { name = "transcript-ingest" },
+    { name = "transcript-post" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1476,6 +1485,11 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [
+    { name = "transcript-domain", editable = "domain" },
+    { name = "transcript-ingest", editable = "ingest" },
+    { name = "transcript-post", editable = "post" },
+]
 
 [package.metadata.requires-dev]
 dev = [

@@ -84,3 +84,39 @@ class TestRule136Boundaries:
     def test_comment_lines_are_prefixed_and_precede_the_body(self):
         txt = to_txt("正文", None, comment_lines=["词表替换：甲→乙 ×1"])
         assert txt == "# 词表替换：甲→乙 ×1\n正文\n"
+
+
+@pytest.mark.rule("RULE-136")
+@pytest.mark.rule("RULE-061")
+class TestProductAssemblyKeepsSpeakers:
+    """产物装配层：说话人必须真的进 `.txt`，且无说话人时保持 legacy 形态。
+
+    UAT 实测缺陷：`render_products_for` 把 `None` 传给 `to_txt`，`.srt` 有
+    `[speaker_N]` 而 `.txt` 一个都没有 —— 渲染器单测全绿，装配层却把参数丢了。
+    """
+
+    def test_txt_contains_speaker_blocks_when_segments_have_speakers(self):
+        from transcript_reimagined.post.products import render_products_for
+
+        products = render_products_for(
+            "你好我们开始",
+            _segments(),
+            [],
+            artifact="srt",
+            merged_text_before_glossary="你好我们开始",
+        )
+        assert products.txt == "[speaker_1] 你好我们开始\n[speaker_2] 好的\n[?] 会议结束\n"
+        assert "[speaker_1] 你好" in products.srt
+        assert "[speaker_2] 好的" in products.srt
+
+    def test_txt_stays_legacy_merged_text_without_speakers(self):
+        from transcript_reimagined.post.products import render_products_for
+
+        products = render_products_for(
+            "甲。乙。",
+            [Segment(0.0, 1.0, "甲。"), Segment(1.0, 2.0, "乙。")],
+            [],
+            artifact="srt",
+            merged_text_before_glossary="甲。乙。",
+        )
+        assert products.txt == "甲。乙。\n", "无 speaker 时不能按段分行（破坏逐字节等价）"

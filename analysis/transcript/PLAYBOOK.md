@@ -43,7 +43,7 @@
 
 | 门禁 | 命令 | 试点结果 | P6 收口 |
 |---|---|---|---|
-| 全量测试 | `uv run pytest`（workspace 根） | **542 通过 / 2 跳过 / 41 xfail** | **816 通过 / 2 跳过** |
+| 全量测试 | `uv run pytest`（workspace 根） | **542 通过 / 2 跳过 / 41 xfail** | **824 通过 / 2 跳过（UAT 后）** |
 | 分层契约 | `lint-imports` | **3 kept, 0 broken** | **13 kept, 0 broken** |
 | 端到端 | `python -m transcript_reimagined.runner <meta.json> --out <dir>` | **真实写出三个产物，带词表替换头注释** | 新旧 Pipeline 三产物**逐字节一致** |
 | 前端 | `npm test` + `npm run build` | — | **11 条 Node 测试；dist 通过启动门禁** |
@@ -142,6 +142,11 @@ modernized/transcript-reimagined/
 5. **包 `__init__` 不要 re-export 与子模块同名的 `main`。** 否则 `python -m pkg.main` 会触发 runpy 的「found in sys.modules」警告；控制台脚本直接指向 `pkg.main:main`。
 6. **前端修复要留静态断言。** Q1/Q2/Q4/Q5/Q6/Q10 是行为修复，但 React 单测成本高；在 `web/tests/test_frontend_source.py` 里对关键字符串做断言，能防回退。
 7. **进程级续跑要真杀进程。** `test_process_kill.py` 用子进程 `os._exit(9)`，父进程重新打开同一个 `state.db` 验证分片 0 未重跑 —— 新建一个 Pipeline 实例不算「杀进程」。
+8. **`uv sync` 不等于「能跑」。** 虚拟 workspace 要 `uv sync --all-packages` 才安装全部成员；而成员的 wheel 包根必须写成 PEP 420 命名空间根 `src/transcript_reimagined`，写成子包目录会让 editable 安装只把该目录放进 `sys.path`。普通测试用 `PYTHONPATH` 导入，完全看不见这两类错。
+9. **`[project.scripts]` 会吞掉后面的键。** 把 `dependencies` 写在 scripts 表之后，TOML 合法、测试全绿，但 hatchling 打包时报 `Object reference ... must be a string`。`web/tests/test_workspace_packaging.py` 现在钉住这一类错误。
+10. **真实模型的字节等价只在编排层成立。** 同一音频、同一模型 ID，mlx-audio 0.5.4 → 0.5.9 会产生少量词差（实测相似度 99.6%）。方案书里的「逐字节一致」证据是编排层用确定性假引擎做的，不能外推到推理层。
+11. **端到端要用真实模型点一遍。** 渲染器单测全绿，但装配层把 `segments` 丢给了 `to_txt(..., None)`，`.srt` 有说话人而 `.txt` 没有；`language="auto"` 则直接让任务失败。两者都只有真实 UAT 能抓到。
+12. **UAT 的音频必须先复制到 `/tmp`。** 产物默认写在源文件同目录；直接拿用户 `uploads/` 里的文件跑，会原地覆盖已有产物（本次踩过，已用 legacy 重跑恢复）。
 
 ---
 

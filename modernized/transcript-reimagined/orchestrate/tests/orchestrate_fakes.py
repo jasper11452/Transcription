@@ -40,6 +40,7 @@ class FakeEngine:
         self.has_timestamps = has_timestamps
         self.empty_text_indexes = empty_text_indexes or set()
         self.calls: list[int] = []
+        self.languages: list[str | None] = []
         self._seen_recoverable: set[int] = set()
 
     def transcribe(
@@ -53,6 +54,7 @@ class FakeEngine:
     ) -> TranscriptResult:
         idx = int(Path(audio_path).stem.rsplit("_", 1)[-1])
         self.calls.append(idx)
+        self.languages.append(language)
         if idx in self.recoverable_once_indexes and idx not in self._seen_recoverable:
             self._seen_recoverable.add(idx)
             raise RecoverableError("网络抖动")

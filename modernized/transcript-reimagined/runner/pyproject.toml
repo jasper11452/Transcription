@@ -4,17 +4,16 @@ version = "0.1.0"
 description = "transcript 重建 · Phase 1 纵向切片入口：音频元数据 JSON → 分片规划 → 词表替换 → 渲染 → 真实落盘"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-# 零运行时依赖：本切片只用标准库。真实 I/O 由 file I/O 与跨包 import 提供，
-# 而不是由第三方库提供 —— 这是试点要验证的接缝。
-
-[project.scripts]
-transcript-run = "transcript_reimagined.runner.cli:main"
-
+# 零第三方运行时依赖：本切片只用标准库 + workspace 内的 domain/ingest/post。
+# 真实 I/O 由 file I/O 与跨包 import 提供 —— 这是试点要验证的接缝。
 dependencies = [
     "transcript-domain",
     "transcript-ingest",
     "transcript-post",
 ]
+
+[project.scripts]
+transcript-run = "transcript_reimagined.runner.cli:main"
 
 [build-system]
 requires = ["hatchling"]

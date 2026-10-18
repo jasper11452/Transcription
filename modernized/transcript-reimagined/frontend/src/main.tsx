@@ -253,7 +253,11 @@ export default function ConsoleApp() {
     }
 
     // Q5：没有音频来源就不提交 —— 服务端也会拒，但没必要多跑一趟。
+    // 消息写在 progressDeck 里；该区域默认 hidden，必须先展开，否则提示不可见
+    //（UAT 实测：点击后页面毫无反应，字符串只在 JS 源码里）。
     if (!fileInput.files?.[0] && !pathInput.value.trim()) {
+      deck?.removeAttribute('hidden')
+      if (link) link.hidden = true
       setMsg('请选择音频文件或填写路径')
       return
     }
