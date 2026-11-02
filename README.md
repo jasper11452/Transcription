@@ -64,7 +64,7 @@ npm run dev
         "duration": 123.45,
         "model": "...",
         "confidence": 0.99,
-        "raw": { "...BCut原始返回..." },
+        "raw": { "...": "...BCut 原始返回..." },
         "file": { "path": "...", "name": "...", "size": 1234, "type": "audio/mpeg" }
       }
     }
