@@ -1,0 +1,28 @@
+节点 id      : ui.components
+节点名       : components/（含 9 个未用组件）
+位置         : frontend/src/components
+代码行数     : 962
+
+—— 文件头部注释 ——
+(无)
+
+—— 连接（来自拓扑图）——
+这是死端候选（dead end）。
+
+
+—— 源码片段 ——
+    179 行  frontend/src/components/history-sidebar.tsx
+     58 行  frontend/src/components/ui/alert.tsx
+     34 行  frontend/src/components/ui/badge.tsx
+     60 行  frontend/src/components/ui/button.tsx
+     76 行  frontend/src/components/ui/card.tsx
+    116 行  frontend/src/components/ui/dialog.tsx
+    111 行  frontend/src/components/ui/dropdown-menu.tsx
+     26 行  frontend/src/components/ui/input.tsx
+     20 行  frontend/src/components/ui/label.tsx
+     26 行  frontend/src/components/ui/progress.tsx
+    118 行  frontend/src/components/ui/select.tsx
+     15 行  frontend/src/components/ui/skeleton.tsx
+    104 行  frontend/src/components/ui/tabs.tsx
+     24 行  frontend/src/components/ui/textarea.tsx
+    112 行  frontend/src/components/ui/toast.tsx

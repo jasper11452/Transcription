@@ -1,0 +1,55 @@
+节点 id      : spikes
+节点名       : spikes/
+位置         : spikes
+代码行数     : 11778
+
+—— 文件头部注释 ——
+(无)
+
+—— 连接（来自拓扑图）——
+(无连接)
+
+—— 源码片段 ——
+     59 行  spikes/make_offline_fixture.py
+    109 行  spikes/probe_bcut.py
+    176 行  spikes/probe_dashscope_native.py
+    162 行  spikes/probe_dashscope_native_shapes.py
+     77 行  spikes/probe_offline_timestamps.py
+    192 行  spikes/probe_online.py
+    282 行  spikes/workbench/.baseline/index.html
+    531 行  spikes/workbench/.baseline/src/audio.js
+    159 行  spikes/workbench/.baseline/src/export.js
+   1727 行  spikes/workbench/.baseline/src/main.js
+    184 行  spikes/workbench/.baseline/src/palette.js
+     63 行  spikes/workbench/.baseline/src/stats.js
+    554 行  spikes/workbench/.baseline/src/store.js
+    546 行  spikes/workbench/.baseline/src/transcript.js
+    247 行  spikes/workbench/.baseline/src/ui.js
+    237 行  spikes/workbench/.baseline/src/util.js
+    609 行  spikes/workbench/.baseline/src/waveform.js
+    534 行  spikes/workbench/.baseline/styles/app.css
+     87 行  spikes/workbench/.baseline/styles/tokens.css
+    482 行  spikes/workbench/.baseline/tools/e2e-smoke.mjs
+    112 行  spikes/workbench/.baseline/tools/serve.js
+     96 行  spikes/workbench/.baseline/tools/static-check.mjs
+    338 行  spikes/workbench/.baseline/tools/test-pure.mjs
+    514 行  spikes/workbench/.baseline/tools/test-store.mjs
+    271 行  spikes/workbench/index.html
+    424 行  spikes/workbench/src/audio.js
+    159 行  spikes/workbench/src/export.js
+   1154 行  spikes/workbench/src/main.js
+    160 行  spikes/workbench/src/palette.js
+     63 行  spikes/workbench/src/stats.js
+    522 行  spikes/workbench/src/store.js
+    361 行  spikes/workbench/src/transcript.js
+    200 行  spikes/workbench/src/ui.js
+    173 行  spikes/workbench/src/util.js
+    393 行  spikes/workbench/src/waveform.js
+    266 行  spikes/workbench/styles/app.css
+     87 行  spikes/workbench/styles/tokens.css
+     25 行  spikes/workbench/tools/count-lines.mjs
+    482 行  spikes/workbench/tools/e2e-smoke.mjs
+    112 行  spikes/workbench/tools/serve.js
+     96 行  spikes/workbench/tools/static-check.mjs
+    338 行  spikes/workbench/tools/test-pure.mjs
+    514 行  spikes/workbench/tools/test-store.mjs

@@ -1,0 +1,38 @@
+[project]
+name = "transcript-state"
+version = "0.1.0"
+description = "transcript 重建版 · state：state.db 的唯一写入者"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "transcript-domain",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcript_reimagined"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# sqlite3.Row 只支持 `in row.keys()`，不支持 `in row`
+"src/transcript_reimagined/state/store.py" = ["SIM118"]
+
+[tool.uv.sources]
+transcript-domain = { workspace = true }

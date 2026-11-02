@@ -1,0 +1,60 @@
+[project]
+name = "transcript"
+version = "0.1.0"
+description = "本机网页版转录工具：音视频 → txt + srt，离线优先，在线可选。"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.28",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "numpy>=2.0,<2.5",
+    "soundfile>=0.13",
+    "mlx-audio>=0.4.3",
+    "mlx-whisper>=0.4.3",
+]
+
+[project.scripts]
+transcript = "transcript.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcript"]
+exclude = ["src/transcript/web/static"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/transcript/web/static/dist" = "transcript/web/static/dist"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# sqlite3.Row 只支持 `in row.keys()`，不支持 `in row`
+"src/transcript/store.py" = ["SIM118"]
+# FastAPI 依赖注入就是靠 File(...) 这类默认值
+"src/transcript/web/app.py" = ["B008"]
+# spike 是一次性验证脚本，允许一行多语句
+"spikes/*" = ["E702"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["smoke: 端到端冒烟，需要样例音频与本地模型", "online: 需要网络与云端凭证"]
+addopts = "-q"

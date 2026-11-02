@@ -1,0 +1,420 @@
+/* 设计语言：/DESIGN.md（xAI 风格解析）
+ * - 深浅主题共用语义色；跟随系统或保留用户选择
+ * - 层级只靠发丝线边框 #212327，卡片 #191919，无投影
+ * - Inter 400（Universal Sans 替身，负字距）+ Geist Mono 大写眉题
+ * - 字体本地打包（@fontsource），不加载远程字体 */
+
+/* 只引 latin / latin-ext：中文走系统 PingFang，西里尔、希腊、越南语子集永远用不到 */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/geist-mono/latin-400.css';
+@import '@fontsource/geist-mono/latin-ext-400.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ffffff;
+    --card: #191919;
+    --card-foreground: #ffffff;
+    --popover: #1a1c20;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #0a0a0a;
+    --secondary: #1a1c20;
+    --secondary-foreground: #ffffff;
+    --muted: #1a1c20;
+    --muted-foreground: #8b8f96;
+    --accent: #1a1c20;
+    --accent-foreground: #ffffff;
+    --destructive: #e5484d;
+    --destructive-foreground: #ffffff;
+    --border: #212327;
+    --input: #212327;
+    --ring: rgba(255, 255, 255, 0.35);
+    --radius: 0.5rem;
+
+    --canvas: #0a0a0a;
+    --canvas-soft: #1a1c20;
+    --canvas-card: #191919;
+    --canvas-mid: #363a3f;
+    --hairline: #212327;
+    --ink: #ffffff;
+    --ink-hover: #fafaf7;
+    --body: #dadbdf;
+    --mute: #8b8f96;
+    --sunset: #ff7a17;
+    --sunset-soft: #ffc285;
+    --twilight: #c4b5fd;
+    --breeze: #a0c3ec;
+    --surface-subtle: rgba(255, 255, 255, 0.025);
+    --surface-hover: rgba(255, 255, 255, 0.05);
+    --surface-selected: rgba(255, 255, 255, 0.07);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { @apply border-border; }
+  html { color-scheme: dark; }
+  html.light { color-scheme: light; }
+  html.light {
+    --background: #f7f7f5;
+    --foreground: #161616;
+    --card: #ffffff;
+    --card-foreground: #161616;
+    --popover: #ffffff;
+    --popover-foreground: #161616;
+    --primary: #161616;
+    --primary-foreground: #ffffff;
+    --secondary: #eeeeeb;
+    --secondary-foreground: #161616;
+    --muted: #eeeeeb;
+    --muted-foreground: #686861;
+    --accent: #e7e7e2;
+    --accent-foreground: #161616;
+    --destructive: #bc2633;
+    --border: #deded8;
+    --input: #deded8;
+    --ring: rgba(22, 22, 22, 0.62);
+    --canvas: #f7f7f5;
+    --canvas-soft: #eeeeeb;
+    --canvas-card: #ffffff;
+    --canvas-mid: #c9c9c4;
+    --hairline: #deded8;
+    --ink: #161616;
+    --ink-hover: #333330;
+    --body: #464640;
+    --mute: #686861;
+    --sunset: #b84708;
+    --sunset-soft: #a64008;
+    --twilight: #6842ad;
+    --breeze: #285d99;
+    --surface-subtle: rgba(22, 22, 22, 0.025);
+    --surface-hover: rgba(22, 22, 22, 0.05);
+    --surface-selected: rgba(22, 22, 22, 0.07);
+  }
+  body {
+    @apply bg-background font-sans text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--ink); color: var(--canvas); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  * { scrollbar-width: thin; scrollbar-color: var(--canvas-mid) transparent; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--canvas-mid); }
+}
+
+@layer components {
+  .eyebrow-mono { @apply font-mono text-[11px] uppercase tracking-[0.14em] text-mute; }
+  .field-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%238b8f96' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px;
+  }
+  #dropZone[data-drag='1'] { border-color: var(--ink); border-style: solid; background-color: var(--surface-hover); }
+  /* 浅色画布上 #deded8 的虚线框只有 ~1.2:1，几乎看不见；提高到刚好过 3:1 的暖灰。 */
+  html.light #dropZone { border-color: #8f8f87; }
+  /* 模式开关是真 radio，但视觉上是两个 pill；聚焦时把 ring 画在 pill 上，否则键盘用户看不到焦点。 */
+  #modeLever label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+  /* 一个滑动的底：两个 label 等宽，切模式时 thumb 平移，而不是两个背景各自淡入 */
+  #modeLever .mode-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    border-radius: 9999px;
+    background: var(--ink);
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  #modeLever:has(input[value='online']:checked) .mode-thumb { transform: translateX(100%); }
+  .skip-link { position: fixed; left: 12px; top: 12px; z-index: 60; transform: translateY(-180%); border: 1px solid var(--hairline); border-radius: 9999px; background: var(--canvas-card); padding: 8px 14px; color: var(--ink); font-size: 13px; transition: transform 150ms var(--ease-out); }
+  .skip-link:focus-visible { transform: translateY(0); }
+  /* 展开的密钥/引擎面板、手机历史：出现时轻推一下，不再硬切 */
+  #engineField:not([hidden]), #historyPanel[data-open='1'] {
+    animation: panel-in 200ms var(--ease-out) both;
+  }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .media-preview { width: 100%; max-height: 260px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--canvas-soft); }
+  /* 视频框按 16:9 先定高：等元数据的话，提交按钮会在落手后约 400ms 又跳 108px（实测）。 */
+  video.media-preview { aspect-ratio: 16 / 9; object-fit: contain; }
+  /* 标题区的阶段动作：完成→交付，运行→进度。只有手机出现，桌面有右栏。 */
+  .header-action {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    color: var(--body);
+    font-size: 12px;
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+  }
+  .header-action:hover:not(:disabled) { border-color: var(--canvas-mid); background: var(--surface-hover); color: var(--ink); }
+  .header-action:disabled { opacity: 0.6; }
+  .header-action-primary { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
+  .header-action-primary:hover:not(:disabled) { border-color: var(--ink-hover); background: var(--ink-hover); color: var(--canvas); }
+
+  /* 窄屏：历史默认收起，展开由岛上的按钮驱动；宽屏始终展开 */
+  @media (max-width: 1023px) {
+    #historyPanel { display: none; }
+    #historyPanel[data-open='1'] { display: flex; flex-direction: column; }
+  }
+
+  /* 侧栏只有一个主操作：新建转录。其余都是安静的文字入口。 */
+  .side-primary {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--ink);
+    color: var(--canvas);
+    font-size: 14px;
+    transition: background-color 150ms ease-out, transform 150ms var(--ease-out);
+  }
+  .side-primary:hover { background: var(--ink-hover); }
+  .side-primary:active { transform: scale(0.985); }
+
+  /* 主题是偏好，不是导航：去掉描边药丸，退回安静的文本按钮 */
+  .theme-toggle { min-height: 40px; flex-shrink: 0; border: 0; border-radius: 9999px; padding: 6px 10px; color: var(--mute); font: 12px 'Geist Mono', monospace; transition: color 150ms ease-out, background-color 150ms ease-out, transform 150ms ease-out; }
+  .theme-toggle:hover { background: var(--surface-hover); color: var(--ink); }
+  .theme-toggle:active { transform: scale(0.97); }
+
+  /* 分组标题（今天/昨天…）：句首大写、12px，和 11px 的全大写栏目标题区分开 */
+  .group-label { font-size: 12px; line-height: 1.45; color: var(--mute); }
+  .model-menu { transform-origin: top center; animation: menu-arrive 180ms var(--ease-out); }
+
+  /* 详情页：卡片只承担分组，不用阴影制造假层级。 */
+  .workbench-card {
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--canvas-card);
+  }
+  .icon-frame {
+    display: inline-flex;
+    height: 32px;
+    width: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid currentColor;
+    border-radius: 9px;
+    background: var(--surface-subtle);
+  }
+  .subtitle-scroll {
+    max-height: min(64vh, 720px);
+    min-height: 292px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--canvas-card);
+  }
+  .subtitle-line {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    min-height: 48px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    transition: background-color 150ms ease-out, color 150ms ease-out;
+  }
+  /* 长录音上千行：屏外行跳过布局与绘制，只留估算高度给滚动条；不支持时该声明失效，不影响功能 */
+  .subtitle-line { content-visibility: auto; contain-intrinsic-size: 48px; contain-intrinsic-size: auto 48px; }
+  .subtitle-line:hover { background: var(--surface-hover); }
+  .subtitle-line-live { background: rgba(255, 122, 23, 0.055); }
+  .subtitle-line-current { animation: subtitle-arrive 220ms var(--ease-out) both; }
+  .subtitle-time {
+    width: 54px;
+    flex: 0 0 54px;
+    padding-top: 4px;
+    color: var(--mute);
+    font-size: 11px;
+    letter-spacing: 0.01em;
+  }
+  .subtitle-line-live .subtitle-time { color: var(--sunset-soft); }
+  .subtitle-cursor {
+    width: 1px;
+    height: 20px;
+    flex: 0 0 1px;
+    margin-top: 4px;
+    background: var(--sunset);
+    animation: cursor-blink 900ms steps(2, end) infinite;
+  }
+  .subtitle-pending-row {
+    display: flex;
+    gap: 16px;
+    min-height: 44px;
+    padding: 9px 8px;
+    opacity: 0.72;
+  }
+  .subtitle-pending-row .subtitle-time { padding-top: 3px; }
+  /* 上滑暂停跟随后，新字幕在底部浮出：点一下就回到最新。 */
+  .subtitle-follow-pill {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    z-index: 10;
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    background: var(--canvas-card);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+    color: var(--ink);
+    font-size: 12px;
+    transform: translateX(-50%);
+    animation: pill-arrive 180ms var(--ease-out) both;
+  }
+  .subtitle-follow-pill:hover { background: var(--surface-hover); }
+  html.light .subtitle-follow-pill { box-shadow: 0 6px 18px rgba(22, 22, 22, 0.14); }
+  .live-label { display: inline-flex; align-items: center; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--sunset-soft); }
+  .live-label span { height: 5px; width: 5px; border-radius: 50%; background: var(--sunset); animation: live-pulse 1.4s ease-in-out infinite; }
+  .status-ping { animation: status-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.55; }
+  .live-orbit { position: relative; display: flex; height: 40px; width: 66px; align-items: center; justify-content: center; gap: 5px; }
+  .live-orbit span { height: 5px; width: 5px; border-radius: 50%; background: var(--sunset); animation: live-dot 1.2s ease-in-out infinite; }
+  .live-orbit span:nth-child(2) { animation-delay: 120ms; }
+  .live-orbit span:nth-child(3) { animation-delay: 240ms; }
+  .summary-content { animation: content-arrive 180ms var(--ease-out) both; }
+  .summary-bullet { position: relative; padding-left: 17px; color: var(--body); font-size: 13px; line-height: 1.6; }
+  .summary-bullet::before { content: ''; position: absolute; left: 2px; top: 0.65em; height: 4px; width: 4px; border-radius: 50%; background: var(--twilight); }
+  .summary-action::before { border-radius: 1px; background: var(--sunset); }
+  .summary-waiting { position: relative; overflow: hidden; border-radius: 8px; background: var(--surface-subtle); padding: 16px; }
+  .summary-shimmer { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(196, 181, 253, 0.09), transparent); animation: shimmer 1.8s ease-in-out infinite; }
+  .summary-waiting p { position: relative; }
+  .status-breathe { animation: status-breathe 2.4s ease-in-out infinite; }
+  .is-busy { animation: busy-breathe 1.1s ease-in-out infinite; }
+  @keyframes busy-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.68; } }
+  .summary-retry { display: inline-flex; align-items: center; gap: 6px; color: var(--mute); font-size: 12px; transition: color 150ms ease-out; }
+  .summary-retry:hover { color: var(--ink); }
+  .summary-caret { display: inline-block; margin-left: 2px; height: 0.95em; width: 2px; transform: translateY(2px); background: var(--twilight); animation: live-pulse 1s ease-in-out infinite; }
+  .summary-thinking { border-radius: 8px; background: var(--surface-subtle); }
+  .summary-thinking-head { display: flex; min-height: 34px; cursor: pointer; list-style: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 0 12px; color: var(--mute); font-size: 12px; transition: color 150ms ease-out; }
+  .summary-thinking-head::-webkit-details-marker { display: none; }
+  .summary-thinking-head:hover { color: var(--ink); }
+  .summary-thinking[open] .summary-thinking-head { padding-bottom: 2px; }
+  .summary-thinking-body { max-height: 300px; overflow: auto; margin: 0; padding: 4px 12px 12px; color: var(--mute); font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .file-action { display: flex; width: 100%; align-items: center; gap: 9px; min-height: 40px; border-radius: 8px; padding: 0 11px; color: var(--body); font-size: 13px; transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .file-action:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
+  .file-action-primary { color: var(--ink); background: var(--surface-selected); }
+  .file-action-disabled { color: var(--mute); opacity: 0.8; }
+  .file-action:disabled { cursor: default; }
+}
+
+@keyframes status-breathe { 0%, 100% { opacity: 0.45; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes menu-arrive { from { opacity: 0; transform: scale(0.97) translateY(-3px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes subtitle-arrive { from { opacity: 0.7; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes content-arrive { from { opacity: 0.7; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cursor-blink { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0.18; } }
+@keyframes pill-arrive { from { opacity: 0; transform: translate(-50%, 6px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes live-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes status-ping { 75%, 100% { transform: scale(2.1); opacity: 0; } }
+@keyframes live-dot { 0%, 100% { transform: translateY(3px); opacity: 0.35; } 50% { transform: translateY(-3px); opacity: 1; } }
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* 幕布期间活页面不参与绘制，它自己的颜色过渡一条都看不见，却要和幕布抢主线程：
+   实测换色瞬间有 524 个元素在跑颜色 transition，关掉后 rAF 最大间隔 26.5ms → 12.4ms。
+   不放进 @layer，天然压过 Tailwind utilities，不必 !important。 */
+html[data-theme-transition] * { transition: none; }
+
+/* 划到哪变到哪：旧主题快照留在下层，新主题快照自上而下被裁开，
+   分界线扫过的位置就是主题已经切完的位置。 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+/* 曲线不用弹层那条 (0.32,0.72,0,1)：它把 81% 的行程压在头 27%，边界冲到底后就只剩一条线在挪。 */
+/* 挂 data-theme-transition 是因为换任务也会开 View Transition，这里不能无条件上幕布。 */
+html[data-theme-transition]::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-wipe 400ms cubic-bezier(0.33, 0.35, 0.45, 1);
+}
+@keyframes theme-wipe {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+/* 切换是「这条线滑过去」，不是两条线各自淡入淡出——后者读起来是一个消失、一个出现。
+   只动 transform；宽度用 scaleX 拉（2px 直角线不会变形），不必动 width 触发 layout。
+   bottom:-1px 故意压过容器那 1px 分隔线，否则激活项底下会叠出双线缝。 */
+.tab-underline {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 1px;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: left center;
+  transition: transform 240ms cubic-bezier(0.33, 0.35, 0.45, 1);
+}
+
+/* 内容替换后怎么「就位」：换任务的主栏、第一次露面的标签面板共用这一套。
+   ① 不做旧内容退场：否则「能读新内容」要从 100ms 推到 240ms（实测）。
+   ② 不从 opacity:0 起步：从 0 起步时主栏真有一整帧全空（区域方差 0），面板也会先空一帧。
+   ③ 只留一层落差：面板淡、内层再淡就是叠乘 0.4×0.4，所以内层起步 0.7，落差交给面板。
+   4px 上浮用来交代「这块换了」。data-shown 让入场只此一次：Radix 标签外壳常驻、
+   内容每次重挂，不挡就会每次切回来都重播。 */
+.swap-in,
+.result-tab-content[data-state='active']:not([data-shown]) {
+  animation: swap-arrive 150ms var(--ease-out) both;
+}
+/* 切标签：内容轻抬 3px；首次渲染不播（骨架刚被换掉，再闪一下等于多动一次）。 */
+[data-switched] .result-tab-content[data-state='active'] {
+  animation: tab-arrive 160ms var(--ease-out) both;
+}
+@keyframes tab-arrive {
+  from { opacity: 0.55; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 跨文档换页（控制台 ↔ 详情、历史里的整页跳转）：Chrome/Safari 支持就淡入，
+   不支持时没有副作用。主题幕布自己带 data-theme-transition，不会被这里接管。 */
+@view-transition { navigation: auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-theme-transition])::view-transition-old(root) {
+    animation: page-leave 120ms ease-out both;
+  }
+  html:not([data-theme-transition])::view-transition-new(root) {
+    animation: page-enter 180ms var(--ease-out) both;
+  }
+}
+@keyframes page-leave { to { opacity: 0; } }
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes swap-arrive {
+  from { opacity: 0.4; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 粗指针（触屏）：触控目标统一到 44px，鼠标端密度不变。 */
+@media (any-pointer: coarse) {
+  .theme-toggle, .nav-row, #sourcePath, #language, #onlineEngine, .file-action, .skip-link, .header-action, .side-primary { min-height: 44px; }
+  main button { min-height: 44px; }
+  .subtitle-follow-pill { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle:active { transform: none; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+}

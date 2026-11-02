@@ -1,0 +1,181 @@
+节点 id      : web.app
+节点名       : web/app.py
+位置         : src/transcript/web/app.py
+代码行数     : 646
+
+—— 文件头部注释 ——
+"""FastAPI 应用：本机网页入口。
+
+—— 连接（来自拓扑图）——
+这是入口点（entry point）。
+  <- cli  [call]  cli.py
+  -> pipeline  [call]  pipeline.py
+  -> glossary  [call]  glossary.py
+  -> store  [call]  store.py
+  -> summary  [call]  summary.py
+  -> config  [call]  config.py
+  -> web.jobs  [call]  web/jobs.py
+  -> errors  [call]  errors.py
+  -> web.frontend  [call]  web/frontend.py
+  -> audio  [call]  audio.py
+  -> engines.base  [call]  engines/base.py
+  -> engines.base  [dispatch]  engines/base.py
+  <- ui.lib  [dispatch]  lib/（API · 类型 · SSE）
+  -> ds:state_db  [write]  state.db（SQLite）
+  -> ds:state_db  [read]  state.db（SQLite）
+  -> ds:config_env  [write]  ~/.config/transcript/config.env
+  -> ds:user_text  [write]  glossary.txt · summary-prompt.txt
+  -> ds:uploads  [write]  uploads/（浏览器副本）
+  -> ds:artifacts  [read]  <原名>.txt · .srt · .raw.json
+
+—— 源码片段 ——
+"""FastAPI 应用：本机网页入口。
+
+只绑 127.0.0.1、无鉴权（这是刻意选择，见 PRODUCT.md）。
+页面骨架是构建产物（React + Vite），后端只做三件额外的事：
+把启动状态/任务详情内联进 HTML（首屏不等 /api/status）、提供 JSON 接口、转发 SSE。
+
+密钥铁律：任何响应里都不出现明文——只给掩码尾号（`config.mask` / `mask_preview`）。
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import time
+import uuid
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import httpx
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.requests import Request
+
+from .. import audio as audio_mod
+from ..config import DEFAULT_SUMMARY_MODEL, OPENROUTER_BASE_DEFAULT, Config, mask_preview
+from ..engines.base import (
+    ONLINE_ENGINES,
+    chunk_max_for,
+    engine_catalog,
+    engine_kind_from_name,
+    online_ready,
+    required_key_attrs,
+    spec_for,
+)
+from ..errors import TranscriptError
+from ..glossary import is_hot_word_line, parse_glossary, parse_glossary_report
+from ..pipeline import estimate_cost
+from ..store import Store, TaskRecord
+from ..summary import (
+    DEFAULT_SUMMARY_PROMPT,
+    MAX_HOT_WORD_CHARS,
+    MAX_HOT_WORDS,
+    MAX_PROMPT_CHARS,
+    hot_word_list,
+)
+from .frontend import DIST_DIR, validate_dist
+from .jobs import JobManager
+
+MAX_UPLOAD_BYTES = 2 * 1024**3
+OUTPUT_PREVIEW_CHARS = 200_000
+_AUDIO_MIME = {
+    ".m4a": "audio/mp4",
+    ".mp4": "audio/mp4",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".aac": "audio/aac",
+    ".flac": "audio/flac",
+    ".ogg": "audio/ogg",
+}
+# 凭据字段 presentation 元数据（字段集合本身从引擎表派生，这里只管中文标签）
+_KEY_LABELS = {
+    "dashscope_api_key": "百炼 DashScope",
+    "openrouter_api_key": "OpenRouter",
+}
+CONSOLE_DEFAULTS = {"mode": "offline", "artifact": "srt", "language": "zh", "online_engine": "auto"}
+MODEL_CACHE_TTL_S = 600
+_SUMMARY_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+-]{0,199}")
+
+
+def _inline_json(payload: dict) -> str:
+    """内联进 <script> 的 JSON：转义 < > & 和行分隔符，杜绝 "</script>" 提前闭合。"""
+    raw = json.dumps(payload, ensure_ascii=False)
+    return (
+        raw.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
+def _key_fields(config: Config) -> list[dict]:
+    """页面要填的凭据字段。集合来自引擎注册表的 required_keys，不另写第二份。"""
+    seen: list[str] = []
+    for spec_id in ("dashscope", "openrouter"):  # 展示顺序
+        for attr in spec_for(spec_id).required_keys:
+            if attr not in seen:
+                seen.append(attr)
+    fields = []
+    for attr in seen:
+        value = getattr(config, attr, "")
+        fields.append(
+            {
+                "attr": attr,
+                "env": attr.upper(),
+                "label": _KEY_LABELS.get(attr, attr),
+                "status": config.credential_status().get(attr, ""),
+                "masked": mask_preview(value),
+                "configured": bool(value),
+            }
+        )
+    return fields
+
+
+def create_app(config: Config, store: Store, jobs: JobManager | None = None) -> FastAPI:
+    manager = jobs or JobManager(config, store)
+    app = FastAPI(title="Transcript", version="0.1.0")
+    app.state.config = config
+    app.state.store = store
+    app.state.jobs = manager
+
+    validate_dist(DIST_DIR)
+
+    @app.exception_handler(HTTPException)
+    async def http_error(_: Request, exc: HTTPException) -> JSONResponse:
+        """统一错误格式 {"error": ...}——前端只认这个字段。"""
+        return JSONResponse(status_code=exc.status_code, content={"error": str(exc.detail)})
+
+    # ---------- 页面：构建产物 + 内联启动状态 ----------
+
+    def _serve_page(entry: str, boot: dict) -> FileResponse:
+        html = (DIST_DIR / entry).read_text(encoding="utf-8")
+        snippet = f"<script>window.__BOOT__={_inline_json(boot)};</script>"
+        if "</head>" in html:
+            html = html.replace("</head>", snippet + "</head>", 1)
+        else:  # pragma: no cover - 构建产物一定有 </head>
+            html = snippet + html
+        return Response(content=html, media_type="text/html")
+
+    def _status_payload() -> dict:
+        return {
+            "online_ready": online_ready(config),
+            "online_engines": engine_catalog(config),
+            "credentials": config.credential_status(),
+            "key_fields": _key_fields(config),
+            "defaults": CONSOLE_DEFAULTS,
+            "stats": store.stats(),
+        }
+
+    def _task_payload(t: TaskRecord) -> dict:
+        running = manager.is_running(t.id)
+        content = store.get_summary(t.id).get("content") or {}
+        title = (content.get("title") or "").strip() or Path(t.source_path).name
+        return {
+            "id": t.id,
+            "name": t.name,
+            "title": title,

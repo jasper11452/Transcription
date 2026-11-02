@@ -1,0 +1,65 @@
+[project]
+name = "transcript-post"
+version = "0.1.0"
+description = "transcript 重建版 · post 服务（对齐 · 去重 · 词表 · 渲染 · 产物）"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+# Phase 1 只含 glossary + render：领域模型自持（domain.py），无第三方运行时依赖。
+# align / merge（Phase 3）落地时若需要引擎侧类型，再从这里加依赖 —— 不留空依赖。
+dependencies = [
+    "transcript-domain",
+]
+
+[project.scripts]
+transcript-post-run = "transcript_reimagined.post.run:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transcript_reimagined"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "import-linter>=2.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+
+[tool.importlinter]
+root_packages = ["transcript_reimagined.post"]
+# 被禁的 `transcript` 是别的包，不是 root_package 的后代 —— 需要显式允许跨包检查。
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "post 不依赖 legacy 实现（重建而非包装）"
+type = "forbidden"
+source_modules = ["transcript_reimagined.post"]
+forbidden_modules = ["transcript"]
+
+# 包内单向依赖：domain 是叶；render 与 glossary 互不依赖（`|` 表示独立层，
+# 不允许互相 import）；contracts 建立在其上；products 与入口只向下。
+# （`REIMAGINED_ARCHITECTURE.md` §3：分层必须是可检查事实，不是口头断言。）
+[[tool.importlinter.contracts]]
+name = "post 内部分层单向"
+type = "layers"
+layers = [
+    "transcript_reimagined.post.run",
+    "transcript_reimagined.post.products",
+    "transcript_reimagined.post.contracts",
+    "transcript_reimagined.post.render | transcript_reimagined.post.glossary",
+]
+
+[tool.uv.sources]
+transcript-domain = { workspace = true }
