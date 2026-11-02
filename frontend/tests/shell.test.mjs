@@ -37,7 +37,7 @@ test('窄屏回落成顶部一段，历史限高并自己滚', () => {
     const list = aside.slice(aside.indexOf('id="taskList"'))
     const tag = list.slice(0, list.indexOf('>'))
     assert.ok(tag.includes('overflow-y-auto'), `${name}: 历史自己滚，不顶走主区`)
-    assert.match(tag, /max-h-\[45vh\]/, `${name}: 窄屏限高`)
+    assert.match(tag, /max-h-\[\d+px\]/, `${name}: 窄屏限高（约三条，主内容留在首屏）`)
     assert.ok(tag.includes('lg:flex-1') && tag.includes('lg:max-h-none'), `${name}: 宽屏撑满栏内剩余高度`)
   }
 })
@@ -51,4 +51,36 @@ test('历史容器每页只出现一次，供同一个岛 portal', () => {
 test('首页自己标当前页，详情页的当前任务交给岛标记', () => {
   assert.match(html('index'), /<a href="\/" aria-current="page"/)
   assert.ok(!html('task').includes('aria-current="page"'))
+})
+
+test('两个入口的主区容器一致，点进任务时正文不跳版', () => {
+  const mainClass = (name) => /<main id="main" class="([^"]+)"/.exec(html(name))?.[1]
+  assert.equal(mainClass('index'), mainClass('task'))
+})
+
+test('窄屏历史是折叠区，默认收起且可被岛驱动', () => {
+  for (const name of ENTRIES) {
+    const page = html(name)
+    assert.ok(page.includes('id="historyToggle"'), `${name}: 折叠按钮在`)
+    assert.ok(page.includes('aria-controls="historyPanel"'), `${name}: 按钮绑定面板`)
+    assert.ok(!/id="historyPanel"[^>]*data-open/.test(page), `${name}: 默认收起`)
+  }
+})
+
+test('侧栏只有一个主操作，历史数量两处同步', () => {
+  for (const name of ENTRIES) {
+    const aside = asideOf(html(name))
+    assert.equal((aside.match(/class="side-primary"/g) ?? []).length, 1, `${name}: 只留一个主按钮`)
+    assert.ok(aside.includes('class="history-count'), `${name}: 历史数量有位置`)
+    assert.ok(!aside.includes('离线优先'), `${name}: 不再用口号占一行`)
+  }
+})
+
+test('初始页只读展示热词库，凭据表单不在主表单里', () => {
+  const page = html('index')
+  assert.ok(page.includes('id="hotWordsSection"'), '热词库分区在初始页')
+  assert.ok(page.includes('id="hotWords"'), '热词库有挂载点供岛 portal')
+  assert.ok(!page.includes('id="keyFields"'), '初始页不再挂密钥面板')
+  assert.ok(!page.includes('id="credentials"'), '初始页不再有第二套凭据入口')
+  assert.ok(page.includes('href="/settings"'), '热词库给出管理入口')
 })

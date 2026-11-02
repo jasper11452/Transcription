@@ -6,6 +6,8 @@ SRT 的两个硬要求：时间格式合法（HH:MM:SS,mmm）、时间单调不�
 
 from __future__ import annotations
 
+import re
+
 from .models import Segment, fmt_timestamp
 
 # SRT 单条字幕的字符上限：再长会被播放器截断或压成多行
@@ -86,3 +88,35 @@ def to_txt(
         parts.append(body)
         parts.append("")
     return "\n".join(parts) if parts else ""
+
+
+_SRT_TIME = re.compile(
+    r"(\d+):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d+):(\d{2}):(\d{2})[,.](\d{1,3})"
+)
+
+
+def parse_srt(text: str) -> list[Segment]:
+    """把 SRT 读回段落：在线校对后用它重写产物。
+
+    - 折行按“无空格拼接”还原，与 _wrap 对称（_wrap 只插换行、不插空格）；
+    - 注释行与序号丢弃；时间轴不合法或正文为空的块直接跳过，不写坏产物。
+    """
+    segments: list[Segment] = []
+    for block in re.split(r"\n\s*\n", text.strip()):
+        lines = [line for line in block.splitlines() if line.strip()]
+        # 注释块没有时间行，会在下面被 time_at 跳过；不能按 "#" 过滤正文，
+        # 否则一句以 "#" 开头的字幕会被当成注释丢掉。
+        time_at = next((index for index, line in enumerate(lines) if "-->" in line), None)
+        if time_at is None:
+            continue
+        match = _SRT_TIME.search(lines[time_at])
+        if not match:
+            continue
+        h1, m1, s1, ms1, h2, m2, s2, ms2 = match.groups()
+        start = int(h1) * 3600 + int(m1) * 60 + int(s1) + int(ms1.ljust(3, "0")) / 1000
+        end = int(h2) * 3600 + int(m2) * 60 + int(s2) + int(ms2.ljust(3, "0")) / 1000
+        body = "".join(line.strip() for line in lines[time_at + 1:])
+        if not body or end < start:
+            continue
+        segments.append(Segment(start=start, end=end, text=body))
+    return segments

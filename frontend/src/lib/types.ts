@@ -12,6 +12,8 @@ export interface KeyField {
 export interface EngineEntry {
   id: string
   label: string
+  /** 下拉里用的短名；完整说明在提示行里。 */
+  short_label?: string
   needs_key: string[]
   max_chunk_s: number | null
   has_timestamps: boolean
@@ -55,6 +57,7 @@ export interface Task {
   srt_path: string | null
   raw_path: string | null
   error: string | null
+  started_at: string | null
   created_at: string
   is_terminal: boolean
   running: boolean
@@ -105,13 +108,16 @@ export interface GlossaryRule {
   right: string
 }
 
+export interface HotWordGroup {
+  name: string
+  words: string[]
+}
+
 export interface SummarySettingsPayload {
   model: string
   default_model: string
   base_url: string
   default_base_url: string
-  api_key_configured: boolean
-  api_key_masked: string
   prompt: string
   default_prompt: string
   custom_prompt: boolean
@@ -119,8 +125,11 @@ export interface SummarySettingsPayload {
   config_path: string
   prompt_path: string
   hot_words: string[]
+  hot_word_groups: HotWordGroup[]
   max_hot_words: number
   max_hot_word_chars: number
+  max_hot_word_groups: number
+  max_hot_word_group_chars: number
   glossary_path: string
 }
 
@@ -151,7 +160,9 @@ export interface SummaryPayload {
   } | null
   error: string | null
   model: string
-  partial: { content: string; reasoning: string }
+  /** 增量协议：GET 带 since/reasoning_since 时，content/reasoning 只回新增的尾巴，
+      长度是累计值，用它对账（比客户端长度小说明总结重开了，要整份重置）。 */
+  partial: { content: string; reasoning: string; content_length?: number; reasoning_length?: number }
 }
 
 export interface Boot {

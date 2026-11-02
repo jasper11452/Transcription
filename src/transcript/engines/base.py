@@ -71,6 +71,8 @@ class EngineSpec:
     max_chunk_s: float | None = None
     cost_note: str = ""
     online: bool = True
+    # 下拉框里用的短名：完整说明放不下，会在提示行里按所选引擎展开。
+    short_label: str = ""
 
 
 SPECS: tuple[EngineSpec, ...] = (
@@ -79,6 +81,7 @@ SPECS: tuple[EngineSpec, ...] = (
         label="离线（Qwen3-ASR + whisper 对齐）",
         build=_offline,
         online=False,
+        short_label="离线（本机）",
     ),
     EngineSpec(
         id="dashscope",
@@ -87,6 +90,7 @@ SPECS: tuple[EngineSpec, ...] = (
         required_keys=("dashscope_api_key",),
         max_chunk_s=DASHSCOPE_MAX_CHUNK_S,
         cost_note="按 token 计费（输入 ¥0.8/M，输出 ¥2.7/M）",
+        short_label="百炼 qwen-audio-3.1-asr",
     ),
     EngineSpec(
         id="openrouter",
@@ -94,12 +98,14 @@ SPECS: tuple[EngineSpec, ...] = (
         build=_openrouter,
         required_keys=("openrouter_api_key",),
         cost_note="≈$0.1/小时音频",
+        short_label="OpenRouter mai-transcribe-2",
     ),
     EngineSpec(
         id="bcut",
         label="必剪（匿名免费，句级时间戳，偶有音近错字）",
         build=_bcut,
         cost_note="免费（音频会上传到 B 站存储）",
+        short_label="必剪（匿名免费）",
     ),
 )
 
@@ -180,6 +186,7 @@ def engine_catalog(config: Config) -> list[dict]:
             "label": "auto（按产物：{}）".format(
                 "、".join(f"{k}→{v}" for k, v in AUTO_BY_ARTIFACT.items())
             ),
+            "short_label": "auto（按产物自动选）",
             "needs_key": sorted({k for s in online for k in s.required_keys}),
             "max_chunk_s": None,
             "has_timestamps": True,
@@ -193,6 +200,7 @@ def engine_catalog(config: Config) -> list[dict]:
             {
                 "id": spec.id,
                 "label": spec.label,
+                "short_label": spec.short_label or spec.label,
                 "needs_key": list(spec.required_keys),
                 "max_chunk_s": spec.max_chunk_s,
                 "has_timestamps": True,

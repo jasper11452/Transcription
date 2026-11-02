@@ -4,8 +4,11 @@
  * - Inter 400（Universal Sans 替身，负字距）+ Geist Mono 大写眉题
  * - 字体本地打包（@fontsource），不加载远程字体 */
 
-@import '@fontsource/inter/400.css';
-@import '@fontsource/geist-mono/400.css';
+/* 只引 latin / latin-ext：中文走系统 PingFang，西里尔、希腊、越南语子集永远用不到 */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/geist-mono/latin-400.css';
+@import '@fontsource/geist-mono/latin-ext-400.css';
 
 @tailwind base;
 @tailwind components;
@@ -45,10 +48,8 @@
     --mute: #8b8f96;
     --sunset: #ff7a17;
     --sunset-soft: #ffc285;
-    --dusk: #7c3aed;
     --twilight: #c4b5fd;
     --breeze: #a0c3ec;
-    --midnight: #0d1726;
     --surface-subtle: rgba(255, 255, 255, 0.025);
     --surface-hover: rgba(255, 255, 255, 0.05);
     --surface-selected: rgba(255, 255, 255, 0.07);
@@ -76,7 +77,7 @@
     --destructive: #bc2633;
     --border: #deded8;
     --input: #deded8;
-    --ring: rgba(22, 22, 22, 0.45);
+    --ring: rgba(22, 22, 22, 0.62);
     --canvas: #f7f7f5;
     --canvas-soft: #eeeeeb;
     --canvas-card: #ffffff;
@@ -118,12 +119,82 @@
     background-size: 12px;
   }
   #dropZone[data-drag='1'] { border-color: var(--ink); border-style: solid; background-color: var(--surface-hover); }
+  /* 浅色画布上 #deded8 的虚线框只有 ~1.2:1，几乎看不见；提高到刚好过 3:1 的暖灰。 */
+  html.light #dropZone { border-color: #8f8f87; }
+  /* 模式开关是真 radio，但视觉上是两个 pill；聚焦时把 ring 画在 pill 上，否则键盘用户看不到焦点。 */
+  #modeLever label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+  /* 一个滑动的底：两个 label 等宽，切模式时 thumb 平移，而不是两个背景各自淡入 */
+  #modeLever .mode-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    border-radius: 9999px;
+    background: var(--ink);
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  #modeLever:has(input[value='online']:checked) .mode-thumb { transform: translateX(100%); }
+  .skip-link { position: fixed; left: 12px; top: 12px; z-index: 60; transform: translateY(-180%); border: 1px solid var(--hairline); border-radius: 9999px; background: var(--canvas-card); padding: 8px 14px; color: var(--ink); font-size: 13px; transition: transform 150ms var(--ease-out); }
+  .skip-link:focus-visible { transform: translateY(0); }
+  /* 展开的密钥/引擎面板、手机历史：出现时轻推一下，不再硬切 */
+  #engineField:not([hidden]), #historyPanel[data-open='1'] {
+    animation: panel-in 200ms var(--ease-out) both;
+  }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: none; }
+  }
+
   .media-preview { width: 100%; max-height: 260px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--canvas-soft); }
   /* 视频框按 16:9 先定高：等元数据的话，提交按钮会在落手后约 400ms 又跳 108px（实测）。 */
   video.media-preview { aspect-ratio: 16 / 9; object-fit: contain; }
-  .theme-toggle { min-height: 36px; flex-shrink: 0; border: 1px solid var(--hairline); border-radius: 9999px; padding: 6px 12px; color: var(--body); font: 12px 'Geist Mono', monospace; transition: transform 150ms var(--ease-out), background-color 150ms ease-out; }
-  .theme-toggle:hover { background: var(--surface-hover); }
+  /* 标题区的阶段动作：完成→交付，运行→进度。只有手机出现，桌面有右栏。 */
+  .header-action {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    color: var(--body);
+    font-size: 12px;
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+  }
+  .header-action:hover:not(:disabled) { border-color: var(--canvas-mid); background: var(--surface-hover); color: var(--ink); }
+  .header-action:disabled { opacity: 0.6; }
+  .header-action-primary { border-color: var(--ink); background: var(--ink); color: var(--canvas); }
+  .header-action-primary:hover:not(:disabled) { border-color: var(--ink-hover); background: var(--ink-hover); color: var(--canvas); }
+
+  /* 窄屏：历史默认收起，展开由岛上的按钮驱动；宽屏始终展开 */
+  @media (max-width: 1023px) {
+    #historyPanel { display: none; }
+    #historyPanel[data-open='1'] { display: flex; flex-direction: column; }
+  }
+
+  /* 侧栏只有一个主操作：新建转录。其余都是安静的文字入口。 */
+  .side-primary {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 9999px;
+    background: var(--ink);
+    color: var(--canvas);
+    font-size: 14px;
+    transition: background-color 150ms ease-out, transform 150ms var(--ease-out);
+  }
+  .side-primary:hover { background: var(--ink-hover); }
+  .side-primary:active { transform: scale(0.985); }
+
+  /* 主题是偏好，不是导航：去掉描边药丸，退回安静的文本按钮 */
+  .theme-toggle { min-height: 40px; flex-shrink: 0; border: 0; border-radius: 9999px; padding: 6px 10px; color: var(--mute); font: 12px 'Geist Mono', monospace; transition: color 150ms ease-out, background-color 150ms ease-out, transform 150ms ease-out; }
+  .theme-toggle:hover { background: var(--surface-hover); color: var(--ink); }
   .theme-toggle:active { transform: scale(0.97); }
+
+  /* 分组标题（今天/昨天…）：句首大写、12px，和 11px 的全大写栏目标题区分开 */
+  .group-label { font-size: 12px; line-height: 1.45; color: var(--mute); }
   .model-menu { transform-origin: top center; animation: menu-arrive 180ms var(--ease-out); }
 
   /* 详情页：卡片只承担分组，不用阴影制造假层级。 */
@@ -160,16 +231,18 @@
     border-radius: 8px;
     transition: background-color 150ms ease-out, color 150ms ease-out;
   }
+  /* 长录音上千行：屏外行跳过布局与绘制，只留估算高度给滚动条；不支持时该声明失效，不影响功能 */
+  .subtitle-line { content-visibility: auto; contain-intrinsic-size: 48px; contain-intrinsic-size: auto 48px; }
   .subtitle-line:hover { background: var(--surface-hover); }
   .subtitle-line-live { background: rgba(255, 122, 23, 0.055); }
   .subtitle-line-current { animation: subtitle-arrive 220ms var(--ease-out) both; }
   .subtitle-time {
-    width: 48px;
-    flex: 0 0 48px;
-    padding-top: 5px;
+    width: 54px;
+    flex: 0 0 54px;
+    padding-top: 4px;
     color: var(--mute);
-    font-size: 10px;
-    letter-spacing: 0.02em;
+    font-size: 11px;
+    letter-spacing: 0.01em;
   }
   .subtitle-line-live .subtitle-time { color: var(--sunset-soft); }
   .subtitle-cursor {
@@ -188,21 +261,28 @@
     opacity: 0.72;
   }
   .subtitle-pending-row .subtitle-time { padding-top: 3px; }
-  .follow-toggle {
+  /* 上滑暂停跟随后，新字幕在底部浮出：点一下就回到最新。 */
+  .subtitle-follow-pill {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    z-index: 10;
     display: inline-flex;
+    min-height: 34px;
     align-items: center;
-    gap: 7px;
-    min-height: 30px;
-    padding: 0 10px;
+    gap: 6px;
+    padding: 0 14px;
     border: 1px solid var(--hairline);
     border-radius: 9999px;
-    color: var(--mute);
-    font-size: 11px;
-    transition: color 150ms ease-out, border-color 150ms ease-out, background-color 150ms ease-out;
+    background: var(--canvas-card);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+    color: var(--ink);
+    font-size: 12px;
+    transform: translateX(-50%);
+    animation: pill-arrive 180ms var(--ease-out) both;
   }
-  .follow-toggle:hover { border-color: var(--canvas-mid); color: var(--body); background: var(--surface-hover); }
-  .follow-dot { height: 5px; width: 5px; border-radius: 50%; background: var(--mute); }
-  .follow-dot-on { background: var(--sunset); box-shadow: 0 0 0 3px rgba(255, 122, 23, 0.1); }
+  .subtitle-follow-pill:hover { background: var(--surface-hover); }
+  html.light .subtitle-follow-pill { box-shadow: 0 6px 18px rgba(22, 22, 22, 0.14); }
   .live-label { display: inline-flex; align-items: center; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--sunset-soft); }
   .live-label span { height: 5px; width: 5px; border-radius: 50%; background: var(--sunset); animation: live-pulse 1.4s ease-in-out infinite; }
   .status-ping { animation: status-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.55; }
@@ -217,6 +297,9 @@
   .summary-waiting { position: relative; overflow: hidden; border-radius: 8px; background: var(--surface-subtle); padding: 16px; }
   .summary-shimmer { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(196, 181, 253, 0.09), transparent); animation: shimmer 1.8s ease-in-out infinite; }
   .summary-waiting p { position: relative; }
+  .status-breathe { animation: status-breathe 2.4s ease-in-out infinite; }
+  .is-busy { animation: busy-breathe 1.1s ease-in-out infinite; }
+  @keyframes busy-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.68; } }
   .summary-retry { display: inline-flex; align-items: center; gap: 6px; color: var(--mute); font-size: 12px; transition: color 150ms ease-out; }
   .summary-retry:hover { color: var(--ink); }
   .summary-caret { display: inline-block; margin-left: 2px; height: 0.95em; width: 2px; transform: translateY(2px); background: var(--twilight); animation: live-pulse 1s ease-in-out infinite; }
@@ -226,17 +309,19 @@
   .summary-thinking-head:hover { color: var(--ink); }
   .summary-thinking[open] .summary-thinking-head { padding-bottom: 2px; }
   .summary-thinking-body { max-height: 300px; overflow: auto; margin: 0; padding: 4px 12px 12px; color: var(--mute); font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .file-action { display: flex; width: 100%; align-items: center; gap: 9px; min-height: 38px; border-radius: 8px; padding: 0 11px; color: var(--body); font-size: 13px; transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .file-action { display: flex; width: 100%; align-items: center; gap: 9px; min-height: 40px; border-radius: 8px; padding: 0 11px; color: var(--body); font-size: 13px; transition: background-color 150ms ease-out, color 150ms ease-out; }
   .file-action:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
   .file-action-primary { color: var(--ink); background: var(--surface-selected); }
-  .file-action-disabled { color: var(--mute); opacity: 0.65; }
+  .file-action-disabled { color: var(--mute); opacity: 0.8; }
   .file-action:disabled { cursor: default; }
 }
 
+@keyframes status-breathe { 0%, 100% { opacity: 0.45; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1); } }
 @keyframes menu-arrive { from { opacity: 0; transform: scale(0.97) translateY(-3px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes subtitle-arrive { from { opacity: 0.7; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes content-arrive { from { opacity: 0.7; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes cursor-blink { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0.18; } }
+@keyframes pill-arrive { from { opacity: 0; transform: translate(-50%, 6px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 @keyframes live-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1); } }
 @keyframes status-ping { 75%, 100% { transform: scale(2.1); opacity: 0; } }
 @keyframes live-dot { 0%, 100% { transform: translateY(3px); opacity: 0.35; } 50% { transform: translateY(-3px); opacity: 1; } }
@@ -290,9 +375,43 @@ html[data-theme-transition]::view-transition-new(root) {
 .result-tab-content[data-state='active']:not([data-shown]) {
   animation: swap-arrive 150ms var(--ease-out) both;
 }
+/* 切标签：内容轻抬 3px；首次渲染不播（骨架刚被换掉，再闪一下等于多动一次）。 */
+[data-switched] .result-tab-content[data-state='active'] {
+  animation: tab-arrive 160ms var(--ease-out) both;
+}
+@keyframes tab-arrive {
+  from { opacity: 0.55; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 跨文档换页（控制台 ↔ 详情、历史里的整页跳转）：Chrome/Safari 支持就淡入，
+   不支持时没有副作用。主题幕布自己带 data-theme-transition，不会被这里接管。 */
+@view-transition { navigation: auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-theme-transition])::view-transition-old(root) {
+    animation: page-leave 120ms ease-out both;
+  }
+  html:not([data-theme-transition])::view-transition-new(root) {
+    animation: page-enter 180ms var(--ease-out) both;
+  }
+}
+@keyframes page-leave { to { opacity: 0; } }
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 @keyframes swap-arrive {
   from { opacity: 0.4; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* 粗指针（触屏）：触控目标统一到 44px，鼠标端密度不变。 */
+@media (any-pointer: coarse) {
+  .theme-toggle, .nav-row, #sourcePath, #language, #onlineEngine, .file-action, .skip-link, .header-action, .side-primary { min-height: 44px; }
+  main button { min-height: 44px; }
+  .subtitle-follow-pill { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

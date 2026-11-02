@@ -23,6 +23,8 @@ MAX_PROMPT_CHARS = 12_000
 MAX_REASONING_CHARS = 40_000
 MAX_HOT_WORDS = 80
 MAX_HOT_WORD_CHARS = 40
+MAX_HOT_WORD_GROUPS = 12
+MAX_HOT_WORD_GROUP_CHARS = 24
 REQUEST_TIMEOUT_S = 180.0
 PARTIAL_THROTTLE_S = 0.15
 DEFAULT_SUMMARY_PROMPT = (
@@ -264,16 +266,25 @@ class SummaryManager:
         self._partial: dict[int, dict[str, str]] = {}
         store.interrupt_summaries()
 
-    def payload(self, task_id: int) -> dict:
+    def payload(
+        self, task_id: int, *, since: int = 0, reasoning_since: int = 0
+    ) -> dict:
+        """增量返回：调用方带上已收到的长度，只取尾巴，长总结不再每轮整份重下。"""
         state = self.store.get_summary(task_id)
         partial = self._partial.get(task_id) or {}
+        content = partial.get("content", "")
+        reasoning = partial.get("reasoning", "")
+        content_at = max(0, min(since, len(content)))
+        reasoning_at = max(0, min(reasoning_since, len(reasoning)))
         return {
             **state,
             "available": bool(self.config.openrouter_api_key),
             "model": state["model"] or self.config.summary_model,
             "partial": {
-                "content": partial.get("content", ""),
-                "reasoning": partial.get("reasoning", ""),
+                "content": content[content_at:],
+                "reasoning": reasoning[reasoning_at:],
+                "content_length": len(content),
+                "reasoning_length": len(reasoning),
             },
         }
 

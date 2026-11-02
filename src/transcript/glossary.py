@@ -46,6 +46,14 @@ class Change:
         return f"{self.wrong}→{self.right} ×{self.count}"
 
 
+@dataclass(frozen=True)
+class HotWordGroup:
+    """热词分组；`name` 为空表示没有写分组标题的旧词条。"""
+
+    name: str
+    words: tuple[str, ...]
+
+
 def _strip_inline_comment(line: str) -> str:
     """去掉行内注释（`错词 -> 正确词   # 说明`）。
 
@@ -88,6 +96,48 @@ def parse_hot_words(text: str) -> list[str]:
         if right is None and left not in words:
             words.append(left)
     return words
+
+
+def is_hot_word_group_line(raw_line: str) -> bool:
+    """`## 组名` 是热词分组标题；普通 `#` 注释不参与分组。"""
+    stripped = raw_line.strip()
+    if not stripped.startswith("##"):
+        return False
+    body = stripped[2:]
+    if not body or body[0] not in " \t":
+        return False
+    return bool(_strip_inline_comment(body).strip())
+
+
+def parse_hot_word_groups(text: str) -> list[HotWordGroup]:
+    """按 `## 组名` 切分裸热词；没有标题的旧词条归入空名分组。
+
+    分组只影响展示与编辑，`hot_word_list` 仍然把所有裸热词扁平化交给引擎。
+    只有标题没有词条的分组也会返回，方便设置页保留刚建的空组。
+    """
+    order: list[str] = []
+    grouped: dict[str, list[str]] = {}
+    current = ""
+
+    def bucket(name: str) -> list[str]:
+        if name not in grouped:
+            grouped[name] = []
+            order.append(name)
+        return grouped[name]
+
+    for raw_line in text.splitlines():
+        if is_hot_word_group_line(raw_line):
+            current = _strip_inline_comment(raw_line.strip()[2:]).strip()
+            bucket(current)
+            continue
+        if not is_hot_word_line(raw_line):
+            continue
+        word = _strip_inline_comment(raw_line).strip()
+        words = bucket(current)
+        if word not in words:
+            words.append(word)
+
+    return [HotWordGroup(name, tuple(grouped[name])) for name in order]
 
 
 def load_hot_words(path: Path | str) -> list[str]:

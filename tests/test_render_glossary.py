@@ -14,10 +14,11 @@ from transcript.glossary import (
     is_hot_word_line,
     parse_glossary,
     parse_glossary_report,
+    parse_hot_word_groups,
     parse_hot_words,
 )
 from transcript.models import Segment
-from transcript.render import to_srt, to_txt
+from transcript.render import parse_srt, to_srt, to_txt
 
 SRT_TIME = re.compile(r"^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$")
 
@@ -143,6 +144,17 @@ def test_hotwords_puts_bare_words_first():
     assert words == ["小新", "砹脉", "艾麦"]
 
 
+def test_parse_hot_word_groups_keeps_order_legacy_words_and_empty_groups():
+    text = "# 普通注释\n旧词\n## 产品 # 说明\n小新\n小新\n## 客户\n选号侠\n## 空组\n### 不是分组\n"
+    groups = parse_hot_word_groups(text)
+    assert [(group.name, group.words) for group in groups] == [
+        ("", ("旧词",)),
+        ("产品", ("小新",)),
+        ("客户", ("选号侠",)),
+        ("空组", ()),
+    ]
+
+
 def test_apply_rules_is_deterministic_and_counts():
     rules = [Rule("艾麦", "砹脉"), Rule("佳路", "嘉鹿")]
     out, changes = apply_rules("艾麦和佳路，还有艾麦。", rules)
@@ -173,3 +185,14 @@ def test_hotwords_includes_both_spellings():
 def test_change_comment_is_empty_without_changes():
     assert change_comment([]) == []
     assert "艾麦→砹脉 ×2" in change_comment([Change("艾麦", "砹脉", 2)])[0]
+
+
+def test_parse_srt_是_to_srt_的逆运算() -> None:
+    """折行只插换行不插空格；解析必须原样拼回，否则每轮保存都会往正文里加空格。"""
+    long_text = "这是一段超过四十二个字符的长字幕用来验证折行还原是否正确" * 2
+    segments = [Segment(0.0, 2.0, "第一句"), Segment(2.0, 4.0, long_text)]
+    parsed = parse_srt(to_srt(segments))
+    assert [segment.text for segment in parsed] == ["第一句", long_text]
+    # 正文以 # 开头不是注释，必须原样读回
+    assert [segment.text for segment in parse_srt(to_srt([Segment(0.0, 1.0, "#话题")]))] == ["#话题"]
+    assert [round(segment.start, 3) for segment in parsed] == [0.0, 2.0]

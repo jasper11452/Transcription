@@ -15,7 +15,9 @@ from fastapi.testclient import TestClient
 
 from transcript.config import Config
 from transcript.glossary import parse_glossary
+from transcript.render import parse_srt
 from transcript.store import Store
+from transcript.summary import MAX_HOT_WORD_GROUPS, SummaryManager
 from transcript.web.frontend import DIST_DIR
 
 WAV_SECONDS = 0.2
@@ -527,6 +529,40 @@ def test_总结接口_状态与未配置密钥的_400(client: TestClient, store:
     assert "OpenRouter" in resp.json()["error"]
 
 
+def test_静态产物_只有带哈希的_assets_能长缓存(client: TestClient) -> None:
+    """assets 文件名带内容哈希，可以 immutable；dist 根的 theme.js 名字固定，不能跟着长缓存。"""
+    built = next((DIST_DIR / "assets").glob("*.js"))
+    response = client.get(f"/static/dist/assets/{built.name}")
+    assert response.status_code == 200
+    assert "immutable" in response.headers["cache-control"]
+
+    theme = client.get("/static/dist/theme.js")
+    assert theme.status_code == 200
+    assert "immutable" not in theme.headers.get("cache-control", "")
+
+
+def test_总结增量返回_只给上次之后新增的尾巴(config: Config, store: Store) -> None:
+    """页面带着已收到的长度来，后端只回尾巴：长总结不能每轮整份重下。"""
+    config.openrouter_api_key = "test-key"
+    task_id = store.create_task(name="a", source_path="/tmp/a.m4a", mode="offline", artifact="srt")
+    manager = SummaryManager(config, store)
+    manager._partial[task_id] = {"content": '{"title":"x"', "reasoning": "先想"}
+
+    full = manager.payload(task_id)
+    assert full["partial"]["content"] == '{"title":"x"'
+    assert full["partial"]["reasoning"] == "先想"
+    assert full["partial"]["content_length"] == 12
+
+    tail = manager.payload(task_id, since=9, reasoning_since=1)
+    assert tail["partial"]["content"] == '"x"'
+    assert tail["partial"]["reasoning"] == "想"
+    assert tail["partial"]["content_length"] == 12
+
+    # 游标超过现有长度（例如总结重开）时退化到空尾巴，长度对齐交给页面判断
+    assert manager.payload(task_id, since=999)["partial"]["content"] == ""
+    assert manager.payload(task_id, since=999)["partial"]["content_length"] == 12
+
+
 def test_总结接口_任务不存在返回_404(client: TestClient) -> None:
     assert client.get("/api/tasks/99999/summary").status_code == 404
     assert client.post("/api/tasks/99999/summary").status_code == 404
@@ -544,6 +580,130 @@ def test_开启总结_任务未完成时保持等待(config: Config, store: Stor
 
     task = client.get(f"/api/tasks/{task_id}").json()["task"]
     assert task["status"] == "running"  # create_task 的默认态：总结不改变转录任务本身
+
+
+def test_保存校对结果_同时重写字幕与文稿(client: TestClient, store: Store, tmp_path: Path) -> None:
+    """在线编辑只改正文：srt 与 txt 一起落盘，时间轴不许动。"""
+    srt_path = tmp_path / "a.srt"
+    txt_path = tmp_path / "a.txt"
+    srt_path.write_text(
+        "1\n00:00:00,000 --> 00:00:02,000\n旧字幕\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n第二句\n",
+        encoding="utf-8",
+    )
+    txt_path.write_text("旧字幕第二句\n", encoding="utf-8")
+    task_id = store.create_task(name="a", source_path="/tmp/a.m4a", mode="offline", artifact="srt")
+    store.update_task(task_id, status="done", srt_path=str(srt_path), txt_path=str(txt_path))
+
+    edited = (
+        "1\n00:00:00,000 --> 00:00:02,000\n新字幕\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n第二句\n"
+    )
+    resp = client.put(f"/api/tasks/{task_id}/artifacts", json={"srt": edited})
+    assert resp.status_code == 200, resp.text
+    assert "新字幕" in srt_path.read_text(encoding="utf-8")
+    assert txt_path.read_text(encoding="utf-8") == "新字幕第二句\n"
+    assert client.get(f"/api/tasks/{task_id}").json()["task"]["chars"] == 6
+
+    # 少一行：拒绝保存，磁盘保持原样
+    before = srt_path.read_text(encoding="utf-8")
+    bad_rows = client.put(
+        f"/api/tasks/{task_id}/artifacts",
+        json={"srt": "1\n00:00:00,000 --> 00:00:02,000\n只有一行\n"},
+    )
+    assert bad_rows.status_code == 400
+    assert srt_path.read_text(encoding="utf-8") == before
+
+    # 改时间轴：拒绝
+    shifted = edited.replace("00:00:02,000 --> 00:00:04,000", "00:00:03,000 --> 00:00:05,000")
+    assert client.put(f"/api/tasks/{task_id}/artifacts", json={"srt": shifted}).status_code == 400
+
+    # 正文清空：拒绝
+    empty = edited.replace("第二句", " ")
+    assert client.put(f"/api/tasks/{task_id}/artifacts", json={"srt": empty}).status_code == 400
+
+
+def test_保存校对结果_同文不同句不会改错行(
+    client: TestClient, store: Store, tmp_path: Path
+) -> None:
+    """两句正文一模一样时，改第二句不能把第一句替换掉。"""
+    srt_path = tmp_path / "dup.srt"
+    txt_path = tmp_path / "dup.txt"
+    srt_path.write_text(
+        "1\n00:00:00,000 --> 00:00:02,000\n好的\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n好的\n",
+        encoding="utf-8",
+    )
+    txt_path.write_text("好的好的\n", encoding="utf-8")
+    task_id = store.create_task(name="dup", source_path="/tmp/d.m4a", mode="offline", artifact="srt")
+    store.update_task(task_id, status="done", srt_path=str(srt_path), txt_path=str(txt_path))
+
+    edited = (
+        "1\n00:00:00,000 --> 00:00:02,000\n好的\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n对的\n"
+    )
+    assert client.put(f"/api/tasks/{task_id}/artifacts", json={"srt": edited}).status_code == 200
+    assert txt_path.read_text(encoding="utf-8") == "好的对的\n"
+
+
+def test_保存校对结果_注释留痕不被正文替换波及(
+    client: TestClient, store: Store, tmp_path: Path
+) -> None:
+    """热词留痕和正文含同样的词时，只改正文里的那一处。"""
+    srt_path = tmp_path / "note.srt"
+    txt_path = tmp_path / "note.txt"
+    srt_path.write_text(
+        "# 热词替换：砹脉 → 艾脉\n\n"
+        "1\n00:00:00,000 --> 00:00:02,000\n砹脉\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n第二句\n",
+        encoding="utf-8",
+    )
+    txt_path.write_text("# 热词替换：砹脉 → 艾脉\n砹脉第二句\n", encoding="utf-8")
+    task_id = store.create_task(name="note", source_path="/tmp/n.m4a", mode="offline", artifact="srt")
+    store.update_task(task_id, status="done", srt_path=str(srt_path), txt_path=str(txt_path))
+
+    edited = (
+        "# 热词替换：砹脉 → 艾脉\n\n"
+        "1\n00:00:00,000 --> 00:00:02,000\n#话题\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n改过了\n"
+    )
+    assert client.put(f"/api/tasks/{task_id}/artifacts", json={"srt": edited}).status_code == 200
+    assert txt_path.read_text(encoding="utf-8") == "# 热词替换：砹脉 → 艾脉\n#话题改过了\n"
+    assert "#话题" in srt_path.read_text(encoding="utf-8")
+
+
+def test_全文编辑文稿_按原时间轴重新切句(client: TestClient, store: Store, tmp_path: Path) -> None:
+    """全文是唯一真相；srt 跟着对齐回原时间轴，不新增/移动时间码。"""
+    srt_path = tmp_path / "full.srt"
+    txt_path = tmp_path / "full.txt"
+    srt_path.write_text(
+        "1\n00:00:00,000 --> 00:00:02,000\n第一句\n\n"
+        "2\n00:00:02,000 --> 00:00:04,000\n第二句\n\n"
+        "3\n00:00:04,000 --> 00:00:06,000\n第三句\n",
+        encoding="utf-8",
+    )
+    txt_path.write_text("第一句第二句第三句\n", encoding="utf-8")
+    task_id = store.create_task(name="full", source_path="/tmp/f.m4a", mode="offline", artifact="srt")
+    store.update_task(task_id, status="done", srt_path=str(srt_path), txt_path=str(txt_path))
+
+    resp = client.put(
+        f"/api/tasks/{task_id}/transcript",
+        json={"text": "第一句改过了\n第二句\n第三句"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert txt_path.read_text(encoding="utf-8") == "第一句改过了\n第二句\n第三句\n"
+    segments = parse_srt(srt_path.read_text(encoding="utf-8"))
+    assert [segment.text for segment in segments] == ["第一句改过了", "第二句", "第三句"]
+    assert [round(segment.start, 1) for segment in segments] == [0.0, 2.0, 4.0]
+
+    # 删掉一整句：时间轴不挪，文字不能丢
+    resp = client.put(f"/api/tasks/{task_id}/transcript", json={"text": "第一句改过了\n第三句"})
+    assert resp.status_code == 200, resp.text
+    joined = "".join(segment.text for segment in parse_srt(srt_path.read_text(encoding="utf-8")))
+    assert joined == "第一句改过了第三句"
+
+    # 空文稿拒绝保存
+    assert client.put(f"/api/tasks/{task_id}/transcript", json={"text": "  "}).status_code == 400
 
 
 # ---------- 模型清单（设置页的下拉） ----------
@@ -638,3 +798,100 @@ def test_热词里的非法写法被挡下(client: TestClient, config: Config) -
     resp = client.put("/api/summary-settings", json={**body, "hot_words": ["小心=小新"]})
     assert resp.status_code == 400
     assert "=" in resp.json()["error"]
+
+
+def test_热词分组保存后保留规则并保持组顺序(client: TestClient, config: Config) -> None:
+    config.openrouter_api_key = "test-key"
+    config.glossary_path.write_text("## 产品\n旧词\n\n艾麦 -> 砹脉\n", encoding="utf-8")
+    body = {
+        "model": "z-ai/glm-5.3-flash",
+        "base_url": "https://openrouter.ai/api/v1",
+        "prompt": "重点写决策",
+    }
+    payload = client.put(
+        "/api/summary-settings",
+        json={
+            **body,
+            "hot_word_groups": [
+                {"name": "产品", "words": ["小新"]},
+                {"name": "客户", "words": ["选号侠", "小新"]},
+                {"name": "", "words": ["旧词"]},
+            ],
+        },
+    ).json()
+
+    # 未分组词条写在最前面，否则解析时会被算进最后一个命名分组。
+    assert payload["hot_word_groups"] == [
+        {"name": "", "words": ["旧词"]},
+        {"name": "产品", "words": ["小新"]},
+        {"name": "客户", "words": ["选号侠"]},
+    ]
+    assert payload["max_hot_word_groups"] > 0
+    text = config.glossary_path.read_text(encoding="utf-8")
+    assert "## 产品" in text and "## 客户" in text
+    assert "艾麦 -> 砹脉" in text
+    assert {rule.wrong for rule in parse_glossary(text)} == {"艾麦"}
+    assert payload["hot_words"] == ["旧词", "小新", "选号侠", "砹脉"]
+    # 再读一次接口：分组从词表里解析回来
+    assert (
+        client.get("/api/summary-settings").json()["hot_word_groups"] == payload["hot_word_groups"]
+    )
+
+
+def test_热词保存不吃用户注释且重复保存幂等(client: TestClient, config: Config) -> None:
+    """用户自己写的 `# 热词：…` 也是注释；重写只清本工具的表头，重复保存不能累积空行。"""
+    config.openrouter_api_key = "test-key"
+    config.glossary_path.write_text(
+        "# 我的词表\n# 热词：公司名统一写法，别删我\n艾麦 -> 砹脉\n", encoding="utf-8"
+    )
+    body = {
+        "model": "z-ai/glm-5.3-flash",
+        "base_url": "https://openrouter.ai/api/v1",
+        "prompt": "",
+        "hot_word_groups": [{"name": "产品", "words": ["小新"]}],
+    }
+    for _ in range(3):
+        assert client.put("/api/summary-settings", json=body).status_code == 200
+        text = config.glossary_path.read_text(encoding="utf-8")
+        assert "# 热词：公司名统一写法，别删我" in text
+        assert "艾麦 -> 砹脉" in text
+        assert text.count("## 产品") == 1
+        assert "\n\n\n" not in text
+
+
+@pytest.mark.parametrize(
+    "groups",
+    [
+        [{"name": "产品", "words": []}, {"name": "产品", "words": ["小新"]}],
+        [{"name": "产品#1", "words": []}],
+        [{"name": "", "words": ["小新"]}, {"name": "", "words": ["选号侠"]}],
+        [{"name": f"组{i}", "words": []} for i in range(MAX_HOT_WORD_GROUPS + 1)],
+    ],
+)
+def test_非法热词分组被挡下(client: TestClient, config: Config, groups: list) -> None:
+    config.openrouter_api_key = "test-key"
+    body = {
+        "model": "z-ai/glm-5.3-flash",
+        "base_url": "https://openrouter.ai/api/v1",
+        "prompt": "",
+    }
+    resp = client.put("/api/summary-settings", json={**body, "hot_word_groups": groups})
+    assert resp.status_code == 400
+    assert not config.glossary_path.exists()
+
+
+def test_空的分组行不占名额(client: TestClient, config: Config) -> None:
+    """设置页默认带一个空的「未分组」行；它不能把刚好满额的分组推成超限。"""
+    config.openrouter_api_key = "test-key"
+    groups = [{"name": f"组{i}", "words": []} for i in range(MAX_HOT_WORD_GROUPS)]
+    resp = client.put(
+        "/api/summary-settings",
+        json={
+            "model": "z-ai/glm-5.3-flash",
+            "base_url": "https://openrouter.ai/api/v1",
+            "prompt": "",
+            "hot_word_groups": [*groups, {"name": "", "words": []}],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["hot_word_groups"] == groups

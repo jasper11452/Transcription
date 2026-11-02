@@ -123,8 +123,9 @@ def test_index_page_is_served(client: TestClient):
         < res.text.index('id="modeLever"')
         < res.text.index('id="submit"')
     )
-    assert "完成后会显示文稿和字幕的实际位置" in res.text
-    assert 'id="progressDeck" aria-label="走片进度" hidden' in res.text
+    # 提交后直接进任务详情页：控制台不再自带一套进度与 SSE
+    assert 'id="progressDeck"' not in res.text
+    assert "查看任务 →" not in res.text
 
 
 def test_status_masks_credentials_and_never_leaks_plaintext(client: TestClient):
@@ -601,6 +602,14 @@ def test_credentials_clear_is_explicit_and_blank_keeps_current(client: TestClien
         {"keys": {"dashscope_api_key": "sk-eq=uals"}},
         {"keys": {"dashscope_api_key": "x" * 600}},
         {"clear": ["nope"]},
+        # 形状不对也算输入错，不能掉到 .strip() 上变成 500
+        {"keys": {"dashscope_api_key": 7}},
+        {"keys": {"dashscope_api_key": ["sk-a"]}},
+        {"keys": {"dashscope_api_key": None}},
+        {"keys": "dashscope_api_key"},
+        {"clear": "dashscope_api_key"},
+        {"clear": [7]},
+        [],
     ],
 )
 def test_credentials_reject_bad_input_without_touching_file(client: TestClient, payload):

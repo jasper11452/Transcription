@@ -19,6 +19,8 @@
     root.classList.toggle('light', light)
     root.classList.toggle('dark', !light)
     root.style.colorScheme = light ? 'light' : 'dark'
+    // 地址栏/状态栏跟着主题走（iOS Safari 与桌面浏览器的 theme-color）
+    document.querySelector?.('meta[name="theme-color"]')?.setAttribute('content', light ? '#f7f7f5' : '#0a0a0a')
     const button = document.getElementById('themeToggle')
     if (button) {
       const target = light ? '深色模式' : '浅色模式'

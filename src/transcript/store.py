@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     srt_path      TEXT,
     raw_path      TEXT,
     error         TEXT,
+    started_at    TEXT,
     created_at    TEXT    NOT NULL,
     updated_at    TEXT    NOT NULL
 );
@@ -94,6 +95,7 @@ class TaskRecord:
     srt_path: str | None = None
     raw_path: str | None = None
     error: str | None = None
+    started_at: str | None = None
     created_at: str = ""
     updated_at: str = ""
 
@@ -153,6 +155,8 @@ class Store:
         existing_tasks = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
         if "progress" not in existing_tasks:
             conn.execute("ALTER TABLE tasks ADD COLUMN progress REAL NOT NULL DEFAULT 0")
+        if "started_at" not in existing_tasks:
+            conn.execute("ALTER TABLE tasks ADD COLUMN started_at TEXT")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -202,6 +206,7 @@ class Store:
             "srt_path",
             "raw_path",
             "error",
+            "started_at",
         }
         sets = [f"{k}=?" for k in fields if k in allowed]
         if not sets:

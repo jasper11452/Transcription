@@ -454,9 +454,9 @@ The brand uses no shadows. Hairline borders carry all elevation cues.
 - Transcript supports dark and light canvases (user requirement, 2026-10-15). Use the semantic tokens in `frontend/src/index.css` for both.
 - Set hero headlines in `{typography.display-xl}` Universal Sans weight 400 with `-2.4 px` tracking. The precision IS the voice.
 - Use `{rounded.pill}` 9999 px on every interactive element. The pill is the brand.
-- Pair Universal Sans (sentence-case) with GeistMono UPPERCASE (eyebrows, labels, metric counters).
+- Pair Universal Sans (sentence-case) with GeistMono tracked captions for technical labels and counts. Meaning/status labels are Chinese (tracking retained; CJK falls back to the system mono stack); only technical tokens stay Latin (`SRT`, `API`, `BASE URL`).
 - Use white-translucent borders for outline buttons — the brand never uses solid white borders on its outline pill.
-- Console and detail page share one app shell (user requirement, 2026-10-15): the left rail carries the wordmark, the theme toggle, the primary nav row and the history list. It stays flush-left at full height (`lg:sticky lg:top-0 lg:h-dvh`) on wide screens and folds into a top section below `lg`, where the history keeps a `45vh` cap and scrolls on its own. Rail rows use `{rounded.lg}` + `hover:bg-surface-hover`; the current row uses `bg-surface-selected` as the active indicator (see `ex-app-shell-row`).
+- Console and detail page share one app shell (user requirement, 2026-10-15): the left rail carries the wordmark, the theme toggle, the primary nav rows (新建转录 / 设置) and the history list. It stays flush-left at full height (`lg:sticky lg:top-0 lg:h-dvh`) on wide screens and folds into a top section below `lg`, where the history keeps a `132px` cap (about three rows, so the working surface stays in the first viewport) and scrolls on its own. Rail rows use `{rounded.lg}` + `hover:bg-surface-hover`; the current row uses `bg-surface-selected` as the active indicator (see `ex-app-shell-row`).
 
 ### Don't
 - Don't hard-code dark colors in Transcript components. The xAI reference's dark-only restriction is superseded by the user's light-mode requirement.

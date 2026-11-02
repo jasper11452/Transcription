@@ -13,6 +13,7 @@ import threading
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..config import Config
@@ -84,6 +85,8 @@ class JobManager:
             # result/close，新订阅者会先被重放旧 close 并立刻停止跟随——
             # 后端已跑完、页面却永远停在续跑前的读数（2026-09-19 浏览器实测）。
             self._events[tid] = []
+        # 每次真正开跑都记一个起点：页面用它显示"已用时"，续跑也不会继承旧时长。
+        self.store.update_task(tid, started_at=datetime.now(UTC).isoformat(timespec="seconds"))
         executor = self._offline if mode == "offline" else self._online
         executor.submit(self._run, Job(tid, str(source), mode, artifact, language, online_engine))
         return tid

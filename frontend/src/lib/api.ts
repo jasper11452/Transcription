@@ -1,6 +1,7 @@
 // 轻量 API 客户端：所有后端契约（{"error": ...}、"tasks" 包裹）在这里适配。
 
 import type {
+  HotWordGroup,
   StatusPayload,
   SummaryModelListPayload,
   SummaryPayload,
@@ -53,6 +54,32 @@ export async function revealPath(path: string): Promise<void> {
   await parse(await fetch('/api/reveal', { method: 'POST', body: form }))
 }
 
+export async function saveTranscript(
+  id: number,
+  text: string,
+): Promise<{ srt: string; txt: string; lines: number }> {
+  return parse(
+    await fetch(`/api/tasks/${id}/transcript`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    }),
+  )
+}
+
+export async function saveArtifacts(
+  id: number,
+  srt: string,
+): Promise<{ srt: string; txt: string; lines: number }> {
+  return parse(
+    await fetch(`/api/tasks/${id}/artifacts`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ srt }),
+    }),
+  )
+}
+
 export async function fetchOutput(id: number, kind: 'txt' | 'srt'): Promise<string> {
   const res = await fetch(`/api/tasks/${id}/output/file?kind=${kind}`)
   if (!res.ok) await parse(res)
@@ -66,9 +93,9 @@ export async function fetchSummarySettings(): Promise<SummarySettingsPayload> {
 export async function saveSummarySettings(payload: {
   model: string
   base_url: string
-  api_key?: string
   prompt: string
-  hot_words: string[]
+  hot_words?: string[]
+  hot_word_groups?: HotWordGroup[]
 }): Promise<SummarySettingsPayload> {
   return parse(
     await fetch('/api/summary-settings', {
@@ -83,8 +110,12 @@ export async function fetchSummaryModels(refresh = false): Promise<SummaryModelL
   return parse(await fetch(`/api/summary-models${refresh ? '?refresh=1' : ''}`))
 }
 
-export async function fetchSummary(id: number): Promise<SummaryPayload> {
-  return parse(await fetch(`/api/tasks/${id}/summary`))
+export async function fetchSummary(
+  id: number,
+  since?: { content: number; reasoning: number },
+): Promise<SummaryPayload> {
+  const query = since ? `?since=${since.content}&reasoning_since=${since.reasoning}` : ''
+  return parse(await fetch(`/api/tasks/${id}/summary${query}`))
 }
 
 export async function enableSummary(id: number): Promise<SummaryPayload> {

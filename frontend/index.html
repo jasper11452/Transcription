@@ -3,36 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#0a0a0a" />
     <title>转录 · Transcript</title>
     <script src="/theme.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body class="flex min-h-dvh flex-col lg:flex-row">
+    <a class="skip-link" href="#main">跳到主要内容</a>
     <!-- 左侧栏：品牌、主题、导航、历史都在栏内；宽屏常驻整高，窄屏回落成顶部一段 -->
-    <aside class="flex shrink-0 flex-col border-b border-hairline lg:sticky lg:top-0 lg:h-dvh lg:w-72 lg:border-b-0 lg:border-r">
-      <div class="flex h-14 items-center justify-between gap-3 px-5">
-        <a href="/" class="font-mono text-[13px] tracking-[0.18em] text-ink">TRANSCRIPT</a>
-        <button id="themeToggle" type="button" class="theme-toggle" aria-label="切换到浅色模式">浅色模式</button>
+    <aside aria-label="导航与历史" class="flex shrink-0 flex-col border-b border-hairline lg:sticky lg:top-0 lg:h-dvh lg:w-72 lg:border-b-0 lg:border-r">
+      <div class="flex h-12 items-center justify-between gap-2 px-3 lg:h-14">
+        <a href="/" class="nav-row inline-flex min-h-8 items-center rounded-lg px-2 font-mono text-[13px] tracking-[0.18em] text-ink">TRANSCRIPT</a>
+        <div class="flex items-center gap-0.5">
+          <nav aria-label="应用">
+            <a href="/settings" class="nav-row inline-flex items-center rounded-lg px-3 py-2 text-[13px] text-mute transition-colors hover:bg-surface-hover hover:text-ink">设置</a>
+          </nav>
+          <button id="themeToggle" type="button" class="theme-toggle" aria-label="切换到浅色模式">浅色模式</button>
+        </div>
       </div>
 
-      <nav class="px-3">
-        <a href="/" aria-current="page" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-hover">＋ 新建转录</a>
+      <nav aria-label="转录" class="px-2 pt-1">
+        <a href="/" aria-current="page" class="side-primary">＋ 新建转录</a>
       </nav>
 
-      <!-- 历史列表自己滚：宽屏撑满栏的剩余高度，窄屏限高 45vh -->
-      <div class="mt-6 flex flex-col px-3 lg:min-h-0 lg:flex-1">
-        <p class="eyebrow-mono px-3 pb-3">最近任务</p>
-        <div id="taskList" class="max-h-[45vh] overflow-y-auto lg:min-h-0 lg:max-h-none lg:flex-1"></div>
+      <!-- 历史列表：手机上默认收起，让任务正文回到首屏；宽屏常驻并撑满栏内剩余高度 -->
+      <div class="mt-5 flex flex-col px-3 lg:mt-6 lg:min-h-0 lg:flex-1">
+        <button id="historyToggle" type="button" aria-expanded="false" aria-controls="historyPanel"
+          class="nav-row flex items-center justify-between rounded-lg px-2 py-2 lg:hidden">
+          <span class="eyebrow-mono">最近任务</span>
+          <span class="history-count font-mono text-[11px] text-mute"></span>
+        </button>
+        <p class="eyebrow-mono hidden items-center justify-between px-2 pb-2 lg:flex">
+          最近任务
+          <span class="history-count font-mono text-[11px] normal-case tracking-normal text-mute"></span>
+        </p>
+        <div id="historyPanel" class="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <div id="taskList" class="max-h-[156px] overflow-y-auto lg:min-h-0 lg:max-h-none lg:flex-1"></div>
+        </div>
       </div>
-
-      <p class="eyebrow-mono mt-4 hidden px-5 pb-4 lg:block">离线优先 · 文件不出本机</p>
     </aside>
 
     <!-- 主区：只留办事的表单，宽度收窄到单栏 -->
     <div class="flex min-h-0 flex-1 flex-col">
-      <main class="mx-auto w-full max-w-3xl flex-1 px-6 pb-24">
-        <div class="pt-8">
-          <h1 class="text-xl leading-7 tracking-heading">新建转录</h1>
+      <main id="main" class="mx-auto w-full max-w-5xl flex-1 px-5 pb-24 sm:px-8">
+        <div class="max-w-2xl pt-9 sm:pt-12">
+          <h1 class="text-2xl leading-8 tracking-heading">新建转录</h1>
 
           <form id="taskForm" class="mt-5">
             <label
@@ -41,7 +57,7 @@
               class="flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-hairline bg-card px-6 py-16 text-center transition-colors hover:border-canvas-mid focus-within:ring-1 focus-within:ring-ring"
             >
               <span class="text-sm text-body">拖入音视频，或点击选择</span>
-              <span id="fileHint" class="font-mono text-[11px] tracking-[0.08em] text-mute">m4a · mp3 · wav · mp4</span>
+              <span id="fileHint" class="font-mono text-[11px] tracking-[0.08em] text-mute">m4a · mp3 · wav · mp4 · mov</span>
               <div id="mediaPreview" hidden class="mt-3 w-full max-w-xl"></div>
               <input
                 id="file"
@@ -59,7 +75,7 @@
                 name="source_path"
                 type="text"
                 placeholder="/Users/you/meeting.m4a"
-                class="h-9 min-w-56 flex-1 rounded-lg border border-hairline bg-canvas-soft px-3 text-sm text-foreground transition-colors placeholder:text-mute focus:border-canvas-mid focus:outline-none focus:ring-1 focus:ring-ring"
+                class="h-10 min-w-56 flex-1 rounded-lg border border-hairline bg-canvas-soft px-3 text-sm text-foreground transition-colors placeholder:text-mute focus:border-canvas-mid focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
@@ -70,13 +86,14 @@
                   id="modeLever"
                   role="radiogroup"
                   aria-label="模式"
-                  class="flex w-fit rounded-full border border-hairline bg-canvas-soft p-1"
+                  class="relative flex w-[156px] rounded-full border border-hairline bg-canvas-soft p-[3px]"
                 >
-                  <label class="cursor-pointer rounded-full px-5 py-1.5 text-sm text-body transition-colors has-[input:checked]:bg-ink has-[input:checked]:text-canvas">
+                  <span class="mode-thumb" aria-hidden="true"></span>
+                  <label class="relative z-10 flex-1 cursor-pointer rounded-full px-5 py-2 text-center text-sm text-body transition-colors has-[input:checked]:text-canvas">
                     <input type="radio" name="mode" value="offline" checked class="sr-only" />
                     离线
                   </label>
-                  <label class="cursor-pointer rounded-full px-5 py-1.5 text-sm text-body transition-colors has-[input:checked]:bg-ink has-[input:checked]:text-canvas">
+                  <label class="relative z-10 flex-1 cursor-pointer rounded-full px-5 py-2 text-center text-sm text-body transition-colors has-[input:checked]:text-canvas">
                     <input type="radio" name="mode" value="online" class="sr-only" />
                     在线
                   </label>
@@ -88,19 +105,17 @@
               <button
                 id="submit"
                 type="submit"
-                class="h-11 w-full rounded-full bg-ink px-8 text-sm text-canvas transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-ink-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+                class="h-11 w-full rounded-full bg-ink px-8 text-sm text-canvas transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-ink-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
               >
                 开始离线转录
               </button>
             </div>
 
             <p id="modeHint" class="mt-3 text-sm text-mute">本机跑，不联网，不花钱。</p>
+            <p id="formError" role="alert" hidden class="mt-2 text-sm text-destructive"></p>
+            <p id="estimateHint" hidden class="mt-2 font-mono text-xs text-mute"></p>
 
-            <!-- 密钥只在选在线时出现；离线永远看不到它 -->
-            <div id="credentials" hidden class="mt-5 space-y-3 rounded-lg border border-hairline bg-card p-4">
-              <p class="text-sm text-body">在线密钥</p>
-              <div id="keyFields"></div>
-            </div>
+            <!-- 密钥只在设置页维护：主表单不再出现第二套凭据入口 -->
 
             <details class="mt-5 rounded-lg border border-hairline">
               <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-body [&::-webkit-details-marker]:hidden">
@@ -121,22 +136,34 @@
                   <label for="onlineEngine" class="eyebrow-mono">引擎</label>
                   <select id="onlineEngine" class="field-select h-10 w-full rounded-lg border border-hairline bg-canvas-soft py-2 pl-4 pr-10 text-sm text-foreground focus:border-canvas-mid focus:outline-none">
                   </select>
+                  <p id="engineHint" class="text-xs leading-5 text-mute"></p>
                 </div>
               </div>
             </details>
 
-            <!-- 走片进度：sunset 橙作为唯一的运行时 accent -->
-            <section id="progressDeck" aria-label="走片进度" hidden class="mt-5 border-t border-hairline pt-5">
-              <div class="h-1 overflow-hidden rounded-full bg-canvas-soft">
-                <div id="progressBar" class="h-full w-0 rounded-full bg-sunset transition-all duration-500"></div>
-              </div>
-              <div class="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-                <p id="progressText" class="text-sm text-mute"></p>
-                <a id="progressLink" class="font-mono text-[11px] uppercase tracking-[0.14em] text-body underline-offset-4 transition-colors hover:text-ink hover:underline" href="#">查看任务 →</a>
-              </div>
-              <p class="mt-3 text-xs text-mute">完成后会显示文稿和字幕的实际位置。</p>
-            </section>
           </form>
+
+          <!-- 热词库：只读展示，增删改去设置页；分组来自词表里的 `## 组名` -->
+          <section id="hotWordsSection" hidden aria-label="热词库" class="mt-10 border-t border-hairline pt-6">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div>
+                <p class="text-sm text-body">热词库</p>
+                <p id="hotWordsMeta" class="mt-1 text-xs text-mute">正在读取…</p>
+              </div>
+              <a href="/settings" class="text-xs text-mute underline-offset-4 transition-colors hover:text-ink hover:underline">管理热词</a>
+            </div>
+            <div id="hotWords" class="mt-4"></div>
+          </section>
+
+          <!-- 首次使用：没有任务时说明离线模型、产物位置和在线密钥，不放空话 -->
+          <section id="firstRun" hidden aria-label="首次使用说明" class="mt-10 border-t border-hairline pt-6">
+            <p class="text-sm text-body">第一次使用</p>
+            <ul class="mt-3 space-y-2 text-sm leading-6 text-mute">
+              <li>离线转录在本机跑，音频不出本机。首次运行会加载模型，可能需要下载权重，稍等一会儿。</li>
+              <li>产物写在源文件旁边：同名 <span class="font-mono text-[13px] text-body">.txt</span> 和 <span class="font-mono text-[13px] text-body">.srt</span>。</li>
+              <li>要用在线引擎，先到「设置」里填密钥；页面只显示「已配置」和尾号。</li>
+            </ul>
+          </section>
         </div>
       </main>
 
