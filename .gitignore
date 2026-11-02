@@ -1,28 +1,47 @@
-# Dependencies
+# Python
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
 node_modules/
 
-# Next.js
-.next/
-out/
+# 本机状态库
+state.db
+state.db-wal
+state.db-shm
+uploads/
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Env files
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env
-
-# Editor
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-.idea/
+# macOS
 .DS_Store
+.idea/
+.vscode/
+
+# 现代化工作区（见 analysis/transcript/INTENT.md）
+#
+# legacy/ —— 忽略。它是 git HEAD 的逐字节副本（git archive 导出），跟踪它等于
+#            把同一个仓库装两遍，且会让「快照是否被动过」这件事变难。
+# modernized/ 与 analysis/ —— 跟踪。前者是重建产物（四个成员包 + 541 个通过的
+#            断言），后者是分析与方案的交付物；两者都不是草稿。
+#
+# 只排除可再生的 HTML 报告：它们由插件脚本从邻接的 topology.json / *.md 重新生成，
+# 体量大（合计约 4.1 MB）且每次重建都变。
+legacy/
+analysis/transcript/REPORT.html
+analysis/transcript/TOPOLOGY.html
+
+# 现代化工作区里的缓存
+modernized/**/.pytest_cache/
+modernized/**/.ruff_cache/
+modernized/**/__pycache__/
+analysis/**/__pycache__/
+
+# 前端构建产物必须随包提交：服务启动的硬门槛（NFR-7 / RULE-068）。
+# 上面的通用 `dist/` 规则会把它一并忽略，这里显式放行。
+!modernized/transcript-reimagined/web/src/transcript_reimagined/web/static/dist/
+!modernized/transcript-reimagined/web/src/transcript_reimagined/web/static/dist/**

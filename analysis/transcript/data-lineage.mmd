@@ -1,0 +1,75 @@
+graph LR
+  subgraph PROC["写入方"]
+    PL[pipeline.py]:::w
+    APP[web/app.py]:::rw
+    JOB[web/jobs.py]:::rw
+    STO[store.py]:::rw
+    CL[cli.py]:::rw
+    SUM[summary.py]:::rw
+    EDS[engines/dashscope.py]:::rw
+    EOR[engines/openrouter.py]:::rw
+    EBC[engines/bcut.py]:::rw
+    GLS[glossary.py]:::r
+    CFG[config.py]:::r
+    VADv[vad.py]:::r
+    EOFF[engines/offline.py]:::r
+    TASKT[task.tsx]:::r
+  end
+
+  subgraph DATA["存储（逻辑标识）"]
+    DB[(state.db<br/>tasks · chunks · summaries)]
+    ENV[(config.env<br/>密钥与 Base URL)]
+    UT[(glossary.txt<br/>summary-prompt.txt)]
+    UP[(uploads/<br/>浏览器副本)]
+    ART[(原名.txt · .srt · .raw.json)]
+    MDL[(MLX 模型权重<br/>树外)]
+    CLD[(云端引擎 API<br/>dashscope · openrouter · bcut)]
+  end
+
+  STO -->|"W"| DB
+  PL -->|"W"| DB
+  JOB -->|"W"| DB
+  APP -->|"W"| DB
+  CL -->|"W"| DB
+  PL -->|"R"| DB
+  JOB -->|"R"| DB
+  APP -->|"R"| DB
+  CL -->|"R"| DB
+
+  APP -->|"W"| ENV
+  CL -->|"W"| ENV
+  CFG -->|"R"| ENV
+  SUM -->|"R"| ENV
+  EDS -->|"R"| ENV
+  EOR -->|"R"| ENV
+
+  APP -->|"W"| UT
+  GLS -->|"R"| UT
+  SUM -->|"R"| UT
+
+  APP -->|"W"| UP
+  PL -->|"R"| UP
+
+  PL -->|"W"| ART
+  APP -->|"R"| ART
+  TASKT -->|"R"| ART
+
+  VADv -->|"R"| MDL
+  EOFF -->|"R"| MDL
+
+  EDS -->|"W"| CLD
+  EOR -->|"W"| CLD
+  EBC -->|"W"| CLD
+  SUM -->|"W"| CLD
+  EDS -.->|"R"| CLD
+  EOR -.->|"R"| CLD
+  EBC -.->|"R"| CLD
+  SUM -.->|"R"| CLD
+
+  classDef w fill:#4a2f10,stroke:#cc785c,color:#ffe8d8
+  classDef r fill:#1e1e1e,stroke:#555,color:#d4d4d4
+  classDef rw fill:#2a1a30,stroke:#a855f7,color:#f0e0ff
+
+  %% 实线 = 写，虚线 = 读。state.db 有 5 个写入方、4 个读取方 —— 是图上汇聚度最高的存储；
+  %% config.env 有 2 个写入方（其中 config.save_credentials 无调用者），6 个读取方。
+  %% 所有标识均为逻辑名，未写入任何真实 DSN 或凭据。

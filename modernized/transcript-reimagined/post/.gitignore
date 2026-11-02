@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+# 纵向切片跑出来的产物（真实运行目录不进仓库）
+out/
+*.raw.json

@@ -1,0 +1,26 @@
+节点 id      : workbench
+节点名       : static/workbench/（无路由挂载）
+位置         : src/transcript/web/static/workbench
+代码行数     : 3600
+
+—— 文件头部注释 ——
+(无)
+
+—— 连接（来自拓扑图）——
+这是死端候选（dead end）。
+
+
+—— 源码片段 ——
+    424 行  src/transcript/web/static/workbench/audio.js
+    159 行  src/transcript/web/static/workbench/export.js
+    271 行  src/transcript/web/static/workbench/index.html
+   1154 行  src/transcript/web/static/workbench/main.js
+    160 行  src/transcript/web/static/workbench/palette.js
+     63 行  src/transcript/web/static/workbench/stats.js
+    522 行  src/transcript/web/static/workbench/store.js
+    266 行  src/transcript/web/static/workbench/styles/app.css
+     87 行  src/transcript/web/static/workbench/styles/tokens.css
+    361 行  src/transcript/web/static/workbench/transcript.js
+    200 行  src/transcript/web/static/workbench/ui.js
+    173 行  src/transcript/web/static/workbench/util.js
+    393 行  src/transcript/web/static/workbench/waveform.js

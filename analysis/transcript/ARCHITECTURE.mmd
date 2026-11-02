@@ -1,0 +1,128 @@
+graph TD
+  subgraph CORE["1. 核心契约 · 配置 · 错误"]
+    CFG["config.py"]
+    ERR["errors.py"]
+    MOD["models.py"]
+  end
+
+  subgraph INGEST["2. 音频入料与切片"]
+    AUD["audio.py"]
+    VAD["vad.py"]
+    CHK["chunking.py"]
+  end
+
+  subgraph PIPE["3. 流水线编排"]
+    PL["pipeline.py"]
+  end
+
+  subgraph ENG["4. 引擎适配器"]
+    EB["engines/base.py<br/>SPECS 注册表"]
+    EOFF["engines/offline.py"]
+    EDS["engines/dashscope.py"]
+    EOR["engines/openrouter.py"]
+    EBC["engines/bcut.py"]
+  end
+
+  subgraph POST["5. 后处理与产物"]
+    ALN["align.py"]
+    MRG["merge.py"]
+    GLS["glossary.py"]
+    RND["render.py"]
+  end
+
+  subgraph STORE["6. 状态存储"]
+    STO["store.py"]
+  end
+
+  subgraph SUM["7. Agent 总结"]
+    SM["summary.py"]
+  end
+
+  subgraph DIA["8. 说话人分离"]
+    DI["diar.py<br/>未接通的 FFI"]
+  end
+
+  subgraph WEB["9. Web 服务与任务运行"]
+    APP["web/app.py<br/>743 行 god object"]
+    JOB["web/jobs.py"]
+    FET["web/frontend.py<br/>构建门禁"]
+  end
+
+  subgraph UI["10. React SPA"]
+    MAIN["main.tsx"]
+    TASKT["task.tsx<br/>1271 行"]
+    LIB["lib/*.ts"]
+    UIC["components/*.tsx"]
+  end
+
+  subgraph CLI["11. CLI 入口"]
+    CL["cli.py"]
+  end
+
+  subgraph DEAD["12. 死代码 · 探针 · 文档"]
+    WBK["static/workbench/**<br/>4.2k 行，无路由挂载"]
+    SPK["spikes/**"]
+    TST["tests/**"]
+  end
+
+  CFG --> PL
+  CFG --> EB
+  CFG --> SM
+  CFG --> APP
+  CFG --> CL
+  ERR --> PL
+  ERR --> AUD
+  ERR --> EB
+  ERR --> CL
+  ERR --> APP
+  MOD --> AUD
+  MOD --> CHK
+  MOD --> ALN
+  MOD --> MRG
+  MOD --> RND
+  MOD --> STO
+  MOD --> PL
+  MOD --> EB
+  AUD --> PL
+  VAD --> PL
+  CHK --> PL
+  PL --> EB
+  PL --> ALN
+  PL --> MRG
+  PL --> GLS
+  PL --> RND
+  PL --> STO
+  PL --> DI
+  EB --> EOFF
+  EB --> EDS
+  EB --> EOR
+  EB --> EBC
+  EOFF --> ALN
+  EDS --> ALN
+  EDS --> AUD
+  GLS --> SM
+  JOB --> PL
+  JOB --> SM
+  JOB --> STO
+  APP --> JOB
+  APP --> FET
+  APP --> STO
+  APP --> EB
+  APP --> GLS
+  APP --> SM
+  CL --> APP
+  CL --> FET
+  CL --> PL
+  CL --> STO
+  MAIN --> LIB
+  TASKT --> LIB
+  MAIN --> UIC
+  TASKT --> UIC
+  LIB -- "HTTP + SSE" --> APP
+  SM --> STO
+  TST --> PL
+  TST --> APP
+  SPK --> EDS
+
+  DI -.->|"config 只有 ENABLE_DIAR，无路由/UI 暴露"| CFG
+  WBK -.->|"无人挂载：app.mount 只暴露 static/dist"| APP
