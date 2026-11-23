@@ -1,0 +1,172 @@
+节点 id      : config
+节点名       : config.py
+位置         : src/transcript/config.py
+代码行数     : 212
+
+—— 文件头部注释 ——
+"""配置与凭据。
+
+—— 连接（来自拓扑图）——
+  <- cli  [call]  cli.py
+  <- engines.base  [call]  engines/base.py
+  <- engines.bcut  [call]  engines/bcut.py
+  <- engines.dashscope  [call]  engines/dashscope.py
+  <- engines.offline  [call]  engines/offline.py
+  <- engines.openrouter  [call]  engines/openrouter.py
+  <- pipeline  [call]  pipeline.py
+  <- summary  [call]  summary.py
+  <- web.app  [call]  web/app.py
+  <- web.jobs  [call]  web/jobs.py
+  -> ds:config_env  [read]  ~/.config/transcript/config.env
+
+—— 源码片段 ——
+"""配置与凭据。
+
+铁律（见 AGENTS.md "边界"）：
+- 密钥、总结模型名和 OpenRouter Base URL 保存在 `~/.config/transcript/config.env`；密钥不读 shell 环境里的同名变量。
+- Agent 总结提示词保存在同目录 `summary-prompt.txt`。
+- 任何日志、页面、SQLite、产物里都不出现明文密钥；只显示掩码尾号。
+"""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import stat
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import dotenv_values
+
+DEFAULT_CONFIG_PATH = Path.home() / ".config" / "transcript" / "config.env"
+DEFAULT_STATE_DB = Path.home() / "Documents" / "Transcript" / "state.db"
+DEFAULT_OUTPUT_DIR = Path.home() / "Documents" / "Transcript" / "output"
+
+# 已实测的默认引擎（证据见 docs/spec.md 与 spikes/）
+# qwen-audio-3.1-asr-flash：多模态实时接口，字级时间戳，txt/srt 都能出；300s/次上限
+# 注意：带 -filetrans 后缀的同名模型走异步文件转写接口，与本代码的 multimodal-generation
+# 调用形状不兼容，会返回 HTTP 400 InvalidParameter，不要使用。
+DEFAULT_DASHSCOPE_MODEL = "qwen-audio-3.1-asr-flash"
+DEFAULT_OPENROUTER_MODEL = "microsoft/mai-transcribe-2"
+DEFAULT_OFFLINE_MODEL = "mlx-community/Qwen3-ASR-1.7B-8bit"
+DEFAULT_TIMING_MODEL = "mlx-community/whisper-large-v3-turbo"
+DEFAULT_VAD_MODEL = "mlx-community/silero-vad-v6"
+DEFAULT_SUMMARY_MODEL = "z-ai/glm-5.3-flash"
+
+_BASE_NEMO = Path.home() / "Library" / "Application Support" / "NeMoSpeech" / "main-97a15af"
+DEFAULT_DIAR_LIB = str(_BASE_NEMO / "lib" / "libnemo_speech_asr_c.dylib")
+DEFAULT_DIAR_MODEL = str(
+    Path.home()
+    / "Library"
+    / "Application Support"
+    / "NeMoSpeech"
+    / "models"
+    / "Nemotron-3-Diarization.q8_0.gguf"
+)
+
+# 在线引擎：默认走百炼 qwen-audio-3.1-asr-flash（字级时间戳）；
+# 设成 auto 则按产物选（txt→百炼，srt→OpenRouter），也可显式指定 openrouter/bcut
+DEFAULT_ONLINE_ENGINE = "auto"
+
+DASHSCOPE_BASE_DEFAULT = "https://dashscope.aliyuncs.com"
+OPENROUTER_BASE_DEFAULT = "https://openrouter.ai/api/v1"
+BCUT_BASE_DEFAULT = "https://member.bilibili.com/x/bcut/rubick-interface"
+
+# qwen-audio-3.1-asr-flash 的服务端硬上限（实测：330s → AUDIO_DURATION_TOO_LONG）
+DASHSCOPE_MAX_CHUNK_S = 300.0
+
+
+def mask(secret: str | None) -> str:
+    """只暴露尾号，长度也只给粗粒度信息。"""
+    if not secret:
+        return "未配置"
+    return f"已配置（尾号 {secret[-4:]}）"
+
+
+def mask_preview(secret: str | None) -> str:
+    """输入框占位符用的掩码：固定长度的点 + 尾号，中间一律掩盖。
+
+    和 `mask` 的区别：`mask` 是"配没配"的状态文案（未配置时返回中文），这里是
+    回填到输入框里的视觉占位符（未配置时返回空串）。两者都只暴露尾号 4 位。
+    """
+    if not secret:
+        return ""
+    return f"{'•' * 8}{secret[-4:]}"
+
+
+@dataclass
+class Config:
+    """运行配置。所有值都有默认，缺文件也能跑（离线路径不需要任何密钥）。"""
+
+    config_path: Path = DEFAULT_CONFIG_PATH
+    dashscope_api_key: str = ""
+    openrouter_api_key: str = ""
+    dashscope_base: str = DASHSCOPE_BASE_DEFAULT
+    openrouter_base: str = OPENROUTER_BASE_DEFAULT
+    bcut_base: str = BCUT_BASE_DEFAULT
+    online_engine: str = DEFAULT_ONLINE_ENGINE
+    dashscope_model: str = DEFAULT_DASHSCOPE_MODEL
+    openrouter_model: str = DEFAULT_OPENROUTER_MODEL
+    summary_model: str = DEFAULT_SUMMARY_MODEL
+    summary_prompt: str = ""
+    offline_model: str = DEFAULT_OFFLINE_MODEL
+    timing_model: str = DEFAULT_TIMING_MODEL
+    vad_model: str = DEFAULT_VAD_MODEL
+    # 说话人分离。enable_diar=False 时完全跳过，不加载库和模型
+    enable_diar: bool = False
+    diar_lib: str = DEFAULT_DIAR_LIB
+    diar_model: str = DEFAULT_DIAR_MODEL
+    state_db: Path = DEFAULT_STATE_DB
+    output_dir: Path = DEFAULT_OUTPUT_DIR
+    glossary_path: Path = field(
+        default_factory=lambda: Path.home() / ".config" / "transcript" / "glossary.txt"
+    )
+    # 离线串行、在线并行（spec 第 5 节 Q2）
+    online_concurrency: int = 4
+    max_attempts: int = 3
+    backoff_base: float = 1.0
+    # 切片：目标 30–120s，静音边界留 0.3–1s 重叠。
+    # 实际切片上限还会被引擎的 max_chunk_s 收紧（百炼原生 300s）。
+    chunk_min_s: float = 30.0
+    chunk_max_s: float = 120.0
+    chunk_overlap_s: float = 0.5
+
+    @property
+    def summary_prompt_path(self) -> Path:
+        """Agent 总结提示词的本机持久化文件。"""
+        return self.config_path.with_name("summary-prompt.txt")
+
+    def credential_status(self) -> dict[str, str]:
+        """给页面用的状态，永远不含明文。"""
+        return {
+            "dashscope_api_key": mask(self.dashscope_api_key),
+            "openrouter_api_key": mask(self.openrouter_api_key),
+            "config_path": str(self.config_path),
+            "online_engine": self.online_engine,
+            "dashscope_model": self.dashscope_model,
+            "openrouter_model": self.openrouter_model,
+            "offline_model": self.offline_model,
+            "bcut_needs_key": "否（必剪匿名接口）",
+        }
+
+    @classmethod
+    def load(cls, path: Path | None = None) -> Config:
+        """读主配置文件和可选的总结设置；缺失时使用默认值。"""
+        cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
+        values: dict[str, str] = {}
+        if cfg_path.exists():
+            values = {k: v for k, v in dotenv_values(cfg_path).items() if v is not None}
+
+        def get(name: str, default: str) -> str:
+            return (values.get(name) or default).strip()
+
+        has_summary_model = "SUMMARY_MODEL" in values
+        cfg = cls(
+            config_path=cfg_path,
+            dashscope_api_key=get("DASHSCOPE_API_KEY", ""),
+            openrouter_api_key=get("OPENROUTER_API_KEY", ""),
+            dashscope_base=get("DASHSCOPE_BASE", DASHSCOPE_BASE_DEFAULT).rstrip("/"),
+            openrouter_base=get("OPENROUTER_BASE", OPENROUTER_BASE_DEFAULT).rstrip("/"),
+            bcut_base=get("BCUT_BASE", BCUT_BASE_DEFAULT).rstrip("/"),
+            online_engine=get("ONLINE_ENGINE", DEFAULT_ONLINE_ENGINE),

@@ -1,0 +1,17 @@
+{
+  "task_id": 42,
+  "path": "audio/2026-10-17 会议.m4a",
+  "duration_s": 300.0,
+  "spans": [[0.0, 60.0], [61.2, 300.0]],
+  "merged_text": "我们把集成做完了。请确认艾麦的报价。",
+  "segments": [
+    {"start": 0.0, "end": 20.0, "text": "我们把集成做完了。请", "speaker": "speaker_1"},
+    {"start": 20.0, "end": 40.0, "text": "确认艾麦的报价。", "speaker": "speaker_1"},
+    {"start": 40.0, "end": 60.0, "text": "好的。", "speaker": "speaker_2"}
+  ],
+  "chunk": {"min_s": 30.0, "max_s": 120.0, "overlap_s": 0.5},
+  "engine": "dashscope",
+  "has_timestamps": true,
+  "artifact": "srt",
+  "mode": "online"
+}

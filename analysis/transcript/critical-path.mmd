@@ -1,0 +1,54 @@
+flowchart TD
+  U([深夜整理会议录音的人]) --> P1
+
+  subgraph S1["① 提交"]
+    P1["拖入音频"] --> P2["选离线/在线与产物种类"]
+  end
+
+  P2 --> P3["浏览器安全边界 → 副本落到 uploads/"]
+
+  subgraph S2["② 预处理（本机）"]
+    P3 --> P4["ffprobe 探时长 → ffmpeg 归一化<br/>16k wav / 64k mp3"]
+    P4 --> P5["Silero VAD 找语音区间"]
+    P5 --> P6["规划分片<br/>30–120s，切点落在静音中点<br/>不变量：每片 ≤ max_s 300s"]
+  end
+
+  P6 --> P7["建任务：写 state.db<br/>分片 = 唯一重试与落盘单位"]
+
+  subgraph S3["③ 逐片转写（每条分片独立提交，完成即落库）"]
+    P7 --> B{离线还是在线}
+    B -->|离线| O1["Qwen3-ASR 出文本<br/>+ whisper 出词级时间轴"]
+    B -->|在线| O2["dashscope / openrouter / bcut<br/>单次上限 300s，超限自动收紧切片"]
+    O1 --> O3["分片完成 → update_task 落库"]
+    O2 --> O3
+    O3 --> R{"还有分片吗"}
+    R -->|有| B
+  end
+
+  R -->|没有| P8["合并：相邻分片重叠去重<br/>阈值刻意保守"]
+
+  subgraph S4["④ 后处理"]
+    P8 --> P9["align：Qwen 文本对齐到 whisper 词轴<br/>单调时间不变量"]
+    P9 --> P10["glossary：错词 → 正确词 确定性替换<br/>+ 变更台账"]
+  end
+
+  P10 --> P11["render：42 字符折行的 srt<br/>按说话人合并的 txt"]
+  P11 --> P12["落盘到原文件旁<br/>原名.txt · .srt · .raw.json"]
+
+  P12 --> P13["任务 done"]
+
+  P12 -.->|"⚠ 缺陷：artifact=txt 时也无条件写 .srt<br/>pipeline.py:366"| X1["产物目录多出一个半成品 srt<br/>界面因此显示「下载字幕」"]
+
+  subgraph S5["⑤ 校对（另一个流程）"]
+    P13 --> P14["打开任务详情页<br/>SSE 增量显示已完成分片"]
+    P14 --> P15["改专名 → 重新生成产物"]
+  end
+
+  P12 -.->|"成本：dashscope 路径 cost_usd 恒为 0.000<br/>state.db 实测 10/10 任务"| X2["界面成本估算对在线任务不可信"]
+
+  classDef step fill:#1e1e1e,stroke:#555,color:#d4d4d4
+  classDef warn fill:#4a1010,stroke:#ef4444,color:#ffe0e0
+  classDef human fill:#1f4d2e,stroke:#4ade80,color:#e8ffe8
+  class P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,O1,O2,O3 step
+  class U,P15 human
+  class X1,X2 warn

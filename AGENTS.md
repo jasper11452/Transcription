@@ -1,31 +1,39 @@
-# asr-desktop（语音转写 · macOS）
+# Transcript
 
-原生 Swift（SwiftUI + MLX）的单窗口转写应用：拖入录音，转写，校对，导出。没有 Python，没有后台服务。macOS 14+，Apple 芯片。产品说明、流水线见 `README.md`。
+本机网页版转录工具：音视频 → `txt` + `srt`。FastAPI 单进程（模型常驻）+ Vite 前端。**离线为默认，在线需显式开启。** 详见 `README.md`、`PRODUCT.md`、`DESIGN.md`。
+
+## 它现在的角色
+
+这是**转写质量和功能的参考实现**。后继者：`/Users/jasper/Documents/Projects/asr-desktop`（原生 macOS）和 `/Users/jasper/Documents/meeting-live-notes`（Rust 重写的文件转录）。做那两个项目时，以这里为基准对照：字幕断句（`src/transcript/align.py`）、总结提示词、热词分组、设置项。本目录现在更多是对照和备份，不要把新功能优先做在这里，除非用户明确要求。
 
 ## 常用命令
 
 ```bash
-bash Scripts/fetch-deps.sh     # 拉 mlx-swift、mlx-audio-swift 到 Vendor/ 并打补丁（首次）
-bash build.sh                  # build/语音转写.app
-bash build.sh --dmg            # dist/语音转写.dmg
-bash Scripts/test-summary-streaming.sh               # 总结流式：本地 SSE → 真实 Backend → 落盘、取消重试
-python3 Scripts/test-engine-review-regressions.py    # 引擎评审回归
-python3 Tests/run-workspace-editing-regressions.py   # 文稿/字幕编辑回归
+uv sync
+(cd frontend && npm ci && npm run build)    # 源码运行需要 Node 22.12+
+uv run transcript                           # 起服务并自动打开浏览器
+```
+
+全量验证按这个顺序：
+
+```bash
+(cd frontend && npm run build && npm test)
+uv run pytest
+uv run ruff check
+uv run ruff format --check
 ```
 
 ## 目录
 
-- `Sources/`：界面与状态（`Views`、`TranscriptViews`、`SettingsViews`、`WorkspaceModel`、`MarkdownDocument/View`）
-- `Sources/Native/`：后端（`Backend` 任务与总结、`Engine` 识别流水线、`Audio`、`Downloader` 模型下载、`LocalServer` 本地 OpenAI 兼容服务 `127.0.0.1:18475`、`ConfigEnv`）
-- `Tests/`：Swift 测试和回归脚本；`Runtime/`：安装说明与许可
-- `Vendor/`、`build/`、`dist/` 是拉取或生成的产物，不手改
+- `src/transcript/`：后端（`align.py` 对齐与断句、`cli.py` 入口、`web/` 服务与静态产物）
+- `frontend/`：Vite 前端（`npm run build` 产物放到 `src/transcript/web/static/dist`）
+- `tests/`：pytest；`.acceptances/` 验收记录；`legacy/`、`modernized/`、`spikes/`、`analysis/` 历史与实验
+- `state.db`、`uploads/`：真实任务数据，**测试不要碰**
 
 ## 本项目的硬规则
 
-- **转写质量和功能以 `/Users/jasper/Documents/Transcript` 为基准**，重做界面不能丢：字幕断句（移植自它的 `src/transcript/align.py`）、总结提示词契约、热词分组、LLM/转写服务设置。动手前先对照列出，做完逐项对齐。
-- **设置入口必须一眼可见**（侧栏齿轮 + ⌘,），不因“简洁”藏起来。模型管理单独一页，转写页只选模型。
-- **总结是流式的**：正文边生成边显示，思考过程默认折叠；最终 Markdown 要保留层级和颜色区分。验收要同时看流式过程和最终成稿。
-- **密钥只在 `~/.config/transcript/config.env`**，不写进代码，不打印；查进程用 `pgrep -l`，不要 `pgrep -f`（会把环境变量里的密钥打出来）。
-- **验收看已安装的那一版**：装机后确认安装版本和运行进程是同一版，再重启复测。
-- 内存：转写时加载模型约 3.9GB，安静 2 分钟后释放；改动不能让常驻内存变大。
-- 应用数据在 `~/Library/Application Support/语音转写/`，测试不要碰真实任务记录，用 `-DataRoot` 指向临时目录。
+- **密钥只从 `~/.config/transcript/config.env` 读取**，不读 shell 里的同名环境变量；页面和日志只显示掩码尾号，永不回显明文，不打印。
+- **离线为默认**；在线引擎（百炼、OpenRouter、必剪 bcut）必须由用户显式选择。必剪会把音频上传到 B 站存储，要说明。
+- 热词写在 `~/.config/transcript/glossary.txt`，按 `## 组名` 分组，直接写正确写法，不要求写成“错词=正确词”。
+- 新功能补隔离测试，不碰真实 `state.db` 和密钥。
+- 改总结相关逻辑要同时验证流式输出和最终结果；模型配置尊重 `config.env`。

@@ -1,0 +1,103 @@
+节点 id      : web.frontend
+节点名       : web/frontend.py
+位置         : src/transcript/web/frontend.py
+代码行数     : 66
+
+—— 文件头部注释 ——
+"""前端构建生命周期（PRODUCT.md 2026-09-17 变更，取代"零构建"）。
+
+—— 连接（来自拓扑图）——
+  <- cli  [call]  cli.py
+  <- web.app  [call]  web/app.py
+
+—— 源码片段 ——
+"""前端构建生命周期（PRODUCT.md 2026-09-17 变更，取代"零构建"）。
+
+- `validate_dist`：服务启动的硬门槛。manifest、入口、引用资源缺一不可——
+  "HTML 在、js 不在"这种半成品等于白屏，必须在启动时就拒绝。
+- `ensure_frontend`：源码比产物新就重建；**只使用已安装的本地 npm 依赖**，
+  绝不自动 `npm install`（启动路径不下载东西），失败就停止启动，绝不回退到旧页面。
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+DIST_DIR = Path(__file__).parent / "static" / "dist"
+# 仓库布局 src/transcript/web/frontend.py → 项目根/frontend（wheel 安装时不存在，只校验产物）
+FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
+
+BUILD_TIMEOUT_S = 120
+_ENTRIES = ("index.html", "task.html")
+_FIX = "在 frontend/ 下执行 npm ci && npm run build（需要 Node ≥ 20）"
+
+
+def _invalid(reason: str) -> RuntimeError:
+    return RuntimeError(f"{reason}。修复：{_FIX}；服务启动不会自动下载依赖。")
+
+
+def validate_dist(dist: Path) -> None:
+    """校验构建产物完整。任何缺失都抛 RuntimeError，带可操作的修复指引。"""
+    manifest_path = dist / ".vite" / "manifest.json"
+    if not manifest_path.is_file():
+        raise _invalid(f"前端产物缺失或不完整（{manifest_path} 不存在）")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise _invalid(f"前端产物损坏（manifest.json 无法解析：{exc}）") from exc
+
+    for name in _ENTRIES:
+        entry = manifest.get(name)
+        if not isinstance(entry, dict) or not entry.get("isEntry"):
+            raise _invalid(f"前端产物缺少入口 {name}（manifest 里没有 isEntry 标记）")
+        refs = [entry.get("file") or ""] + list(entry.get("css") or [])
+        # public/theme.js 不在 Vite manifest 中，但缺它会让两个页面失去主题切换。
+        html = dist / name
+        if html.is_file() and "/static/dist/theme.js" in html.read_text(encoding="utf-8"):
+            refs.append("theme.js")
+        for ref in refs:
+            if not ref or not (dist / ref).is_file():
+                raise _invalid(f"前端产物缺失或不完整（入口 {name} 引用的 {ref} 不存在）")
+
+
+def _newest_source_mtime(frontend: Path) -> float:
+    """frontend/ 下最新源文件的 mtime。node_modules / 构建产物不算源码。"""
+    latest = 0.0
+    for path in frontend.rglob("*"):
+        if not path.is_file():
+            continue
+        parts = path.relative_to(frontend).parts
+        if "node_modules" in parts or parts[0] in {".git", "dist"}:
+            continue
+        latest = max(latest, path.stat().st_mtime)
+    return latest
+
+
+def ensure_frontend(frontend: Path, dist: Path) -> None:
+    """缺源码（wheel 安装）→ 只校验产物；产物够新 → 直接用；源码更新 → 重建。"""
+    if not frontend.is_dir():
+        validate_dist(dist)
+        return
+
+    manifest = dist / ".vite" / "manifest.json"
+    built_mtime = manifest.stat().st_mtime if manifest.is_file() else 0.0
+    if _newest_source_mtime(frontend) <= built_mtime:
+        validate_dist(dist)
+        return
+
+    if not (frontend / "node_modules" / ".bin" / "vite").exists():
+        raise _invalid("前端源码比构建产物新，需要重新构建，但 frontend/node_modules 里没有 vite")
+    npm = shutil.which("npm")
+    if npm is None:
+        raise _invalid("需要重新构建前端，但找不到 npm")
+
+    try:
+        subprocess.run([npm, "run", "build"], cwd=frontend, check=True, timeout=BUILD_TIMEOUT_S)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(
+            f"前端构建失败（{exc}），服务未启动——绝不回退到旧页面。修复：{_FIX}"
+        ) from exc
+    validate_dist(dist)

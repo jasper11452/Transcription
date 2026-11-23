@@ -1,0 +1,527 @@
+{
+  "output": {
+    "output": {
+      "request_id": "b138ca38-c660-9855-914b-0f6416cc30f8",
+      "sentence": {
+        "begin_time": 120,
+        "channel_id": 0,
+        "end_time": 11875,
+        "sentence_end": true,
+        "sentence_id": 1,
+        "text": "转录工具冒烟测试今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。",
+        "words": [
+          {
+            "begin_time": 120,
+            "end_time": 520,
+            "fixed": true,
+            "punctuation": "",
+            "text": "转录"
+          },
+          {
+            "begin_time": 520,
+            "end_time": 960,
+            "fixed": true,
+            "punctuation": "",
+            "text": "工具"
+          },
+          {
+            "begin_time": 960,
+            "end_time": 1120,
+            "fixed": true,
+            "punctuation": "",
+            "text": "冒"
+          },
+          {
+            "begin_time": 1120,
+            "end_time": 1440,
+            "fixed": true,
+            "punctuation": "",
+            "text": "烟"
+          },
+          {
+            "begin_time": 1440,
+            "end_time": 2160,
+            "fixed": true,
+            "punctuation": "",
+            "text": "测试"
+          },
+          {
+            "begin_time": 2160,
+            "end_time": 2640,
+            "fixed": true,
+            "punctuation": "",
+            "text": "今天"
+          },
+          {
+            "begin_time": 2640,
+            "end_time": 3120,
+            "fixed": true,
+            "punctuation": "",
+            "text": "讨论"
+          },
+          {
+            "begin_time": 3120,
+            "end_time": 3320,
+            "fixed": true,
+            "punctuation": "",
+            "text": "三"
+          },
+          {
+            "begin_time": 3320,
+            "end_time": 3880,
+            "fixed": true,
+            "punctuation": "",
+            "text": "件事"
+          },
+          {
+            "begin_time": 3880,
+            "end_time": 4160,
+            "fixed": true,
+            "punctuation": "",
+            "text": "："
+          },
+          {
+            "begin_time": 4160,
+            "end_time": 4600,
+            "fixed": true,
+            "punctuation": "",
+            "text": "第"
+          },
+          {
+            "begin_time": 4600,
+            "end_time": 5000,
+            "fixed": true,
+            "punctuation": "，",
+            "text": "一"
+          },
+          {
+            "begin_time": 5400,
+            "end_time": 5453,
+            "fixed": true,
+            "punctuation": "",
+            "text": "离"
+          },
+          {
+            "begin_time": 5453,
+            "end_time": 5506,
+            "fixed": true,
+            "punctuation": "",
+            "text": "线"
+          },
+          {
+            "begin_time": 5506,
+            "end_time": 5560,
+            "fixed": true,
+            "punctuation": "",
+            "text": "转"
+          },
+          {
+            "begin_time": 5560,
+            "end_time": 6040,
+            "fixed": true,
+            "punctuation": "",
+            "text": "写的"
+          },
+          {
+            "begin_time": 6040,
+            "end_time": 6480,
+            "fixed": true,
+            "punctuation": "",
+            "text": "质量"
+          },
+          {
+            "begin_time": 6480,
+            "end_time": 6760,
+            "fixed": true,
+            "punctuation": "",
+            "text": "；"
+          },
+          {
+            "begin_time": 6760,
+            "end_time": 7240,
+            "fixed": true,
+            "punctuation": "",
+            "text": "第"
+          },
+          {
+            "begin_time": 7240,
+            "end_time": 7640,
+            "fixed": true,
+            "punctuation": "，",
+            "text": "二"
+          },
+          {
+            "begin_time": 8040,
+            "end_time": 8130,
+            "fixed": true,
+            "punctuation": "",
+            "text": "在"
+          },
+          {
+            "begin_time": 8130,
+            "end_time": 8220,
+            "fixed": true,
+            "punctuation": "",
+            "text": "线"
+          },
+          {
+            "begin_time": 8220,
+            "end_time": 8310,
+            "fixed": true,
+            "punctuation": "",
+            "text": "字"
+          },
+          {
+            "begin_time": 8310,
+            "end_time": 8400,
+            "fixed": true,
+            "punctuation": "",
+            "text": "幕"
+          },
+          {
+            "begin_time": 8400,
+            "end_time": 8560,
+            "fixed": true,
+            "punctuation": "",
+            "text": "的"
+          },
+          {
+            "begin_time": 8560,
+            "end_time": 9120,
+            "fixed": true,
+            "punctuation": "",
+            "text": "生成"
+          },
+          {
+            "begin_time": 9120,
+            "end_time": 9400,
+            "fixed": true,
+            "punctuation": "",
+            "text": "；"
+          },
+          {
+            "begin_time": 9400,
+            "end_time": 9960,
+            "fixed": true,
+            "punctuation": "",
+            "text": "第"
+          },
+          {
+            "begin_time": 9960,
+            "end_time": 10320,
+            "fixed": true,
+            "punctuation": "，",
+            "text": "三"
+          },
+          {
+            "begin_time": 10680,
+            "end_time": 10780,
+            "fixed": true,
+            "punctuation": "",
+            "text": "专"
+          },
+          {
+            "begin_time": 10780,
+            "end_time": 10880,
+            "fixed": true,
+            "punctuation": "",
+            "text": "有"
+          },
+          {
+            "begin_time": 10880,
+            "end_time": 10980,
+            "fixed": true,
+            "punctuation": "",
+            "text": "名"
+          },
+          {
+            "begin_time": 10980,
+            "end_time": 11080,
+            "fixed": true,
+            "punctuation": "",
+            "text": "词"
+          },
+          {
+            "begin_time": 11080,
+            "end_time": 11280,
+            "fixed": true,
+            "punctuation": "",
+            "text": "的"
+          },
+          {
+            "begin_time": 11280,
+            "end_time": 11875,
+            "fixed": true,
+            "punctuation": "。",
+            "text": "校对"
+          }
+        ]
+      },
+      "text": "转录工具冒烟测试今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。"
+    },
+    "request_id": "b138ca38-c660-9855-914b-0f6416cc30f8",
+    "sentence": {
+      "begin_time": 120,
+      "channel_id": 0,
+      "end_time": 11875,
+      "sentence_end": true,
+      "sentence_id": 1,
+      "text": "转录工具冒烟测试今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。",
+      "words": [
+        {
+          "begin_time": 120,
+          "end_time": 520,
+          "fixed": true,
+          "punctuation": "",
+          "text": "转录"
+        },
+        {
+          "begin_time": 520,
+          "end_time": 960,
+          "fixed": true,
+          "punctuation": "",
+          "text": "工具"
+        },
+        {
+          "begin_time": 960,
+          "end_time": 1120,
+          "fixed": true,
+          "punctuation": "",
+          "text": "冒"
+        },
+        {
+          "begin_time": 1120,
+          "end_time": 1440,
+          "fixed": true,
+          "punctuation": "",
+          "text": "烟"
+        },
+        {
+          "begin_time": 1440,
+          "end_time": 2160,
+          "fixed": true,
+          "punctuation": "",
+          "text": "测试"
+        },
+        {
+          "begin_time": 2160,
+          "end_time": 2640,
+          "fixed": true,
+          "punctuation": "",
+          "text": "今天"
+        },
+        {
+          "begin_time": 2640,
+          "end_time": 3120,
+          "fixed": true,
+          "punctuation": "",
+          "text": "讨论"
+        },
+        {
+          "begin_time": 3120,
+          "end_time": 3320,
+          "fixed": true,
+          "punctuation": "",
+          "text": "三"
+        },
+        {
+          "begin_time": 3320,
+          "end_time": 3880,
+          "fixed": true,
+          "punctuation": "",
+          "text": "件事"
+        },
+        {
+          "begin_time": 3880,
+          "end_time": 4160,
+          "fixed": true,
+          "punctuation": "",
+          "text": "："
+        },
+        {
+          "begin_time": 4160,
+          "end_time": 4600,
+          "fixed": true,
+          "punctuation": "",
+          "text": "第"
+        },
+        {
+          "begin_time": 4600,
+          "end_time": 5000,
+          "fixed": true,
+          "punctuation": "，",
+          "text": "一"
+        },
+        {
+          "begin_time": 5400,
+          "end_time": 5453,
+          "fixed": true,
+          "punctuation": "",
+          "text": "离"
+        },
+        {
+          "begin_time": 5453,
+          "end_time": 5506,
+          "fixed": true,
+          "punctuation": "",
+          "text": "线"
+        },
+        {
+          "begin_time": 5506,
+          "end_time": 5560,
+          "fixed": true,
+          "punctuation": "",
+          "text": "转"
+        },
+        {
+          "begin_time": 5560,
+          "end_time": 6040,
+          "fixed": true,
+          "punctuation": "",
+          "text": "写的"
+        },
+        {
+          "begin_time": 6040,
+          "end_time": 6480,
+          "fixed": true,
+          "punctuation": "",
+          "text": "质量"
+        },
+        {
+          "begin_time": 6480,
+          "end_time": 6760,
+          "fixed": true,
+          "punctuation": "",
+          "text": "；"
+        },
+        {
+          "begin_time": 6760,
+          "end_time": 7240,
+          "fixed": true,
+          "punctuation": "",
+          "text": "第"
+        },
+        {
+          "begin_time": 7240,
+          "end_time": 7640,
+          "fixed": true,
+          "punctuation": "，",
+          "text": "二"
+        },
+        {
+          "begin_time": 8040,
+          "end_time": 8130,
+          "fixed": true,
+          "punctuation": "",
+          "text": "在"
+        },
+        {
+          "begin_time": 8130,
+          "end_time": 8220,
+          "fixed": true,
+          "punctuation": "",
+          "text": "线"
+        },
+        {
+          "begin_time": 8220,
+          "end_time": 8310,
+          "fixed": true,
+          "punctuation": "",
+          "text": "字"
+        },
+        {
+          "begin_time": 8310,
+          "end_time": 8400,
+          "fixed": true,
+          "punctuation": "",
+          "text": "幕"
+        },
+        {
+          "begin_time": 8400,
+          "end_time": 8560,
+          "fixed": true,
+          "punctuation": "",
+          "text": "的"
+        },
+        {
+          "begin_time": 8560,
+          "end_time": 9120,
+          "fixed": true,
+          "punctuation": "",
+          "text": "生成"
+        },
+        {
+          "begin_time": 9120,
+          "end_time": 9400,
+          "fixed": true,
+          "punctuation": "",
+          "text": "；"
+        },
+        {
+          "begin_time": 9400,
+          "end_time": 9960,
+          "fixed": true,
+          "punctuation": "",
+          "text": "第"
+        },
+        {
+          "begin_time": 9960,
+          "end_time": 10320,
+          "fixed": true,
+          "punctuation": "，",
+          "text": "三"
+        },
+        {
+          "begin_time": 10680,
+          "end_time": 10780,
+          "fixed": true,
+          "punctuation": "",
+          "text": "专"
+        },
+        {
+          "begin_time": 10780,
+          "end_time": 10880,
+          "fixed": true,
+          "punctuation": "",
+          "text": "有"
+        },
+        {
+          "begin_time": 10880,
+          "end_time": 10980,
+          "fixed": true,
+          "punctuation": "",
+          "text": "名"
+        },
+        {
+          "begin_time": 10980,
+          "end_time": 11080,
+          "fixed": true,
+          "punctuation": "",
+          "text": "词"
+        },
+        {
+          "begin_time": 11080,
+          "end_time": 11280,
+          "fixed": true,
+          "punctuation": "",
+          "text": "的"
+        },
+        {
+          "begin_time": 11280,
+          "end_time": 11875,
+          "fixed": true,
+          "punctuation": "。",
+          "text": "校对"
+        }
+      ]
+    },
+    "text": "转录工具冒烟测试今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。",
+    "usage": {
+      "duration": 12
+    }
+  },
+  "usage": {
+    "duration": 12
+  },
+  "request_id": "b138ca38-c660-9855-914b-0f6416cc30f8"
+}
