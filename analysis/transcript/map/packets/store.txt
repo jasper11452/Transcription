@@ -1,0 +1,169 @@
+节点 id      : store
+节点名       : store.py
+位置         : src/transcript/store.py
+代码行数     : 353
+
+—— 文件头部注释 ——
+"""任务与分片的持久化（单文件 SQLite）。
+
+—— 连接（来自拓扑图）——
+  <- cli  [call]  cli.py
+  <- pipeline  [call]  pipeline.py
+  -> models  [call]  models.py
+  <- summary  [call]  summary.py
+  <- web.app  [call]  web/app.py
+  <- web.jobs  [call]  web/jobs.py
+  -> ds:state_db  [write]  state.db（SQLite）
+  -> ds:state_db  [read]  state.db（SQLite）
+
+—— 源码片段 ——
+"""任务与分片的持久化（单文件 SQLite）。
+
+设计要点：
+- **分片是续跑单位**：任何一片落盘后进程被杀，重启都从已完成的分片接着跑；
+- 每次调用开一个短连接（WAL 模式），避免线程池里的连接共享问题；
+- 这里**永远不存密钥**，只存路径、状态和度量。
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+
+from .models import Segment, Word
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS tasks (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    source_path   TEXT    NOT NULL,
+    mode          TEXT    NOT NULL,
+    artifact      TEXT    NOT NULL,
+    engine        TEXT,
+    status        TEXT    NOT NULL DEFAULT 'pending',
+    progress      REAL    NOT NULL DEFAULT 0,
+    duration_s    REAL,
+    audio_seconds REAL,
+    cost_usd      REAL,
+    chars         INTEGER,
+    out_dir       TEXT,
+    txt_path      TEXT,
+    srt_path      TEXT,
+    raw_path      TEXT,
+    error         TEXT,
+    created_at    TEXT    NOT NULL,
+    updated_at    TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS chunks (
+    task_id       INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    idx           INTEGER NOT NULL,
+    start         REAL    NOT NULL,
+    end           REAL    NOT NULL,
+    status        TEXT    NOT NULL DEFAULT 'pending',
+    text          TEXT,
+    words_json    TEXT,
+    segments_json TEXT,
+    attempts      INTEGER NOT NULL DEFAULT 0,
+    error         TEXT,
+    updated_at    TEXT,
+    PRIMARY KEY (task_id, idx)
+);
+
+CREATE TABLE IF NOT EXISTS task_summaries (
+    task_id INTEGER PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'disabled',
+    content TEXT,
+    error TEXT,
+    model TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at DESC);
+"""
+
+TERMINAL_STATUSES = frozenset({"done", "failed"})
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+@dataclass
+class TaskRecord:
+    id: int
+    name: str
+    source_path: str
+    mode: str
+    artifact: str
+    status: str
+    progress: float = 0.0
+    engine: str | None = None
+    duration_s: float | None = None
+    audio_seconds: float | None = None
+    cost_usd: float | None = None
+    chars: int | None = None
+    out_dir: str | None = None
+    txt_path: str | None = None
+    srt_path: str | None = None
+    raw_path: str | None = None
+    error: str | None = None
+    created_at: str = ""
+    updated_at: str = ""
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.status in TERMINAL_STATUSES
+
+
+@dataclass
+class ChunkState:
+    task_id: int
+    idx: int
+    start: float
+    end: float
+    status: str = "pending"
+    text: str = ""
+    words: list[Word] = field(default_factory=list)
+    segments: list[Segment] = field(default_factory=list)
+    attempts: int = 0
+    error: str | None = None
+
+    @property
+    def done(self) -> bool:
+        return self.status == "done"
+
+    def as_payload(self) -> dict:
+        return {
+            "idx": self.idx,
+            "start": self.start,
+            "end": self.end,
+            "status": self.status,
+            "chars": len(self.text),
+            "text": self.text,
+            "segments": [{"start": s.start, "end": s.end, "text": s.text} for s in self.segments],
+            "attempts": self.attempts,
+            "error": self.error,
+        }
+
+
+class Store:
+    """SQLite 封装。路径可注入，测试用 tmp_path。"""
+
+    def __init__(self, path: Path | str):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._conn() as conn:
+            conn.executescript(SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """旧库补列。SQLite 的 CREATE TABLE IF NOT EXISTS 不会给已存在的表加列。"""
+        existing_chunks = {row["name"] for row in conn.execute("PRAGMA table_info(chunks)")}
+        if "segments_json" not in existing_chunks:

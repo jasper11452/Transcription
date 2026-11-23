@@ -1,0 +1,247 @@
+{
+  "source": "smoke.wav",
+  "qwen": {
+    "text": "转录工具冒烟测试。今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。",
+    "segments": [
+      {
+        "text": "转录工具冒烟测试。今天讨论三件事：第一，离线转写的质量；第二，在线字幕的生成；第三，专有名词的校对。",
+        "language": "Chinese",
+        "start": 0.0,
+        "end": 11.8750625
+      }
+    ]
+  },
+  "whisper": {
+    "text": "转录工具冒烟测试今天讨论三件事第一,离线转写的质量第二,在线字幕的生成第三,专有名词的校对",
+    "words": [
+      {
+        "text": "转",
+        "start": 0.0,
+        "end": 0.18,
+        "probability": 0.9404296875
+      },
+      {
+        "text": "录",
+        "start": 0.18,
+        "end": 0.38,
+        "probability": 0.8017578125
+      },
+      {
+        "text": "工",
+        "start": 0.38,
+        "end": 0.62,
+        "probability": 0.99462890625
+      },
+      {
+        "text": "具",
+        "start": 0.62,
+        "end": 0.8,
+        "probability": 0.99951171875
+      },
+      {
+        "text": "冒",
+        "start": 0.8,
+        "end": 1.04,
+        "probability": 0.984375
+      },
+      {
+        "text": "烟",
+        "start": 1.04,
+        "end": 1.26,
+        "probability": 0.9853515625
+      },
+      {
+        "text": "测",
+        "start": 1.26,
+        "end": 1.5,
+        "probability": 0.9990234375
+      },
+      {
+        "text": "试",
+        "start": 1.5,
+        "end": 1.78,
+        "probability": 0.9951171875
+      },
+      {
+        "text": "今天",
+        "start": 1.78,
+        "end": 2.32,
+        "probability": 0.2354736328125
+      },
+      {
+        "text": "讨",
+        "start": 2.32,
+        "end": 2.76,
+        "probability": 0.9990234375
+      },
+      {
+        "text": "论",
+        "start": 2.76,
+        "end": 2.94,
+        "probability": 1.0
+      },
+      {
+        "text": "三",
+        "start": 2.94,
+        "end": 3.18,
+        "probability": 0.97216796875
+      },
+      {
+        "text": "件",
+        "start": 3.18,
+        "end": 3.42,
+        "probability": 0.99658203125
+      },
+      {
+        "text": "事",
+        "start": 3.42,
+        "end": 3.84,
+        "probability": 0.9990234375
+      },
+      {
+        "text": "第一,",
+        "start": 3.84,
+        "end": 4.4,
+        "probability": 0.88232421875
+      },
+      {
+        "text": "离",
+        "start": 4.66,
+        "end": 5.0,
+        "probability": 0.9951171875
+      },
+      {
+        "text": "线",
+        "start": 5.0,
+        "end": 5.22,
+        "probability": 0.9990234375
+      },
+      {
+        "text": "转",
+        "start": 5.22,
+        "end": 5.5,
+        "probability": 1.0
+      },
+      {
+        "text": "写",
+        "start": 5.5,
+        "end": 5.74,
+        "probability": 1.0
+      },
+      {
+        "text": "的",
+        "start": 5.74,
+        "end": 5.9,
+        "probability": 1.0
+      },
+      {
+        "text": "质",
+        "start": 5.9,
+        "end": 6.1,
+        "probability": 1.0
+      },
+      {
+        "text": "量",
+        "start": 6.1,
+        "end": 6.36,
+        "probability": 1.0
+      },
+      {
+        "text": "第二,",
+        "start": 6.36,
+        "end": 7.0,
+        "probability": 0.9892578125
+      },
+      {
+        "text": "在",
+        "start": 7.46,
+        "end": 7.6,
+        "probability": 0.974609375
+      },
+      {
+        "text": "线",
+        "start": 7.6,
+        "end": 7.96,
+        "probability": 1.0
+      },
+      {
+        "text": "字",
+        "start": 7.96,
+        "end": 8.1,
+        "probability": 0.99951171875
+      },
+      {
+        "text": "幕",
+        "start": 8.1,
+        "end": 8.3,
+        "probability": 0.93212890625
+      },
+      {
+        "text": "的",
+        "start": 8.3,
+        "end": 8.42,
+        "probability": 1.0
+      },
+      {
+        "text": "生",
+        "start": 8.42,
+        "end": 8.6,
+        "probability": 0.9931640625
+      },
+      {
+        "text": "成",
+        "start": 8.6,
+        "end": 8.92,
+        "probability": 0.99267578125
+      },
+      {
+        "text": "第三,",
+        "start": 8.92,
+        "end": 9.66,
+        "probability": 0.99853515625
+      },
+      {
+        "text": "专",
+        "start": 10.18,
+        "end": 10.34,
+        "probability": 0.9462890625
+      },
+      {
+        "text": "有",
+        "start": 10.34,
+        "end": 10.56,
+        "probability": 0.9970703125
+      },
+      {
+        "text": "名",
+        "start": 10.56,
+        "end": 10.74,
+        "probability": 0.998046875
+      },
+      {
+        "text": "词",
+        "start": 10.74,
+        "end": 11.02,
+        "probability": 0.998046875
+      },
+      {
+        "text": "的",
+        "start": 11.02,
+        "end": 11.14,
+        "probability": 0.998046875
+      },
+      {
+        "text": "校",
+        "start": 11.14,
+        "end": 11.3,
+        "probability": 0.9765625
+      },
+      {
+        "text": "对",
+        "start": 11.3,
+        "end": 11.56,
+        "probability": 0.90576171875
+      }
+    ]
+  }
+}

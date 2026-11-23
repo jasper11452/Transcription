@@ -1,0 +1,129 @@
+graph TD
+  subgraph CORE["1 核心契约"]
+    CFG[config.py]:::mod
+    ERR[errors.py]:::mod
+    MOD[models.py]:::mod
+  end
+  subgraph INGEST["2 音频入料"]
+    AUD[audio.py]:::mod
+    VADv[vad.py]:::mod
+    CHK[chunking.py]:::mod
+  end
+  subgraph PIPE["3 流水线编排"]
+    PL[pipeline.py]:::critical
+  end
+  subgraph ENG["4 引擎适配器"]
+    EB[engines/base.py · SPECS 注册表]:::critical
+    EOFF[engines/offline.py]:::mod
+    EDS[engines/dashscope.py]:::mod
+    EOR[engines/openrouter.py]:::mod
+    EBC[engines/bcut.py]:::mod
+  end
+  subgraph POST["5 后处理"]
+    ALN[align.py]:::mod
+    MRG[merge.py]:::mod
+    GLS[glossary.py]:::mod
+    RND[render.py]:::mod
+  end
+  subgraph STATE["6 存储 · 7 总结 · 8 分离"]
+    STO[store.py]:::mod
+    SUM[summary.py]:::mod
+    DIA[diar.py 未接通]:::dead
+  end
+  subgraph WEB["9 Web 服务"]
+    APP["web/app.py · 646 行 god object"]:::hotspot
+    JOB[web/jobs.py]:::mod
+    FET[web/frontend.py]:::mod
+  end
+  subgraph UI["10 React SPA"]
+    MAIN["main.tsx 入口"]:::entry
+    TASKT["task.tsx 1186 行"]:::hotspot
+    LIB[lib/ · API+SSE]:::mod
+    COMP["components/ 9 个未用"]:::dead
+  end
+  subgraph CLI["11 CLI"]
+    CL["cli.py 入口"]:::entry
+  end
+  subgraph HARNESS["12 死代码 · 测试 · 探针"]
+    WBK["static/workbench 3600 行"]:::dead
+    TST[tests/]:::mod
+    SPK[spikes/]:::mod
+  end
+  subgraph DATA["数据存储"]
+    DB[(state.db)]:::store
+    ENV[(config.env)]:::store
+    UT[(glossary · prompt)]:::store
+    UP[(uploads/)]:::store
+    ART[(txt · srt · raw.json)]:::store
+    MDL[(MLX 权重)]:::store
+    CLD[(云端引擎 API)]:::store
+  end
+
+  CL -->|call| APP
+  CL -->|call| PL
+  CL -->|call| STO
+  CL -->|call| FET
+  CL -->|call| EB
+  MAIN -->|call| LIB
+  TASKT -->|call| LIB
+  MAIN -->|call| COMP
+  TASKT -->|call| COMP
+  LIB -->|dispatch HTTP+SSE| APP
+  APP -->|call| PL
+  APP -->|call| JOB
+  APP -->|call| STO
+  APP -->|call| FET
+  APP -->|dispatch| EB
+  JOB -->|call| PL
+  JOB -->|call| SUM
+  JOB -->|call| STO
+  PL -->|call| AUD
+  PL -->|call| VADv
+  PL -->|call| CHK
+  PL -->|call| EB
+  PL -->|call| ALN
+  PL -->|call| MRG
+  PL -->|call| GLS
+  PL -->|call| RND
+  PL -->|call| STO
+  PL -->|call| DIA
+  EB -->|dispatch| EOFF
+  EB -->|dispatch| EDS
+  EB -->|dispatch| EOR
+  EB -->|dispatch| EBC
+  EOFF -->|call| ALN
+  EDS -->|call| ALN
+  EDS -->|call| AUD
+  GLS -->|call| SUM
+  APP -->|write| ENV
+  CL -->|write| ENV
+  CFG -->|read| ENV
+  SUM -->|read| ENV
+  EDS -->|read| ENV
+  EOR -->|read| ENV
+  APP -->|write| UT
+  GLS -->|read| UT
+  SUM -->|read| UT
+  APP -->|write| UP
+  PL -->|read| UP
+  PL -->|write| ART
+  APP -->|read| ART
+  TASKT -->|read| ART
+  EOFF -->|read| MDL
+  VADv -->|read| MDL
+  EDS -->|write| CLD
+  EOR -->|write| CLD
+  EBC -->|write| CLD
+  SUM -->|write| CLD
+  STO -->|read/write| DB
+  APP -->|read/write| DB
+  JOB -->|read/write| DB
+  CL -->|read/write| DB
+  PL -->|read/write| DB
+
+  classDef entry fill:#1f4d2e,stroke:#4ade80,color:#e8ffe8
+  classDef critical fill:#4a2f10,stroke:#cc785c,color:#ffe8d8
+  classDef hotspot fill:#4a1010,stroke:#ef4444,color:#ffe0e0
+  classDef dead fill:#2a2a2a,stroke:#888,stroke-dasharray:4 3,color:#bbb
+  classDef mod fill:#1e1e1e,stroke:#555,color:#d4d4d4
+  classDef store fill:#132030,stroke:#4a90d9,color:#cfe6ff

@@ -1,0 +1,110 @@
+"""领域模型：分片、段落、词、结果。所有引擎的公共语言。"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Word:
+    """词级时间戳。中文按字给出，英文按词。"""
+
+    text: str
+    start: float
+    end: float
+    probability: float | None = None
+
+
+@dataclass
+class Segment:
+    """带时间轴的文本段，SRT 的最小单位。"""
+
+    start: float
+    end: float
+    text: str
+    words: list[Word] = field(default_factory=list)
+    speaker: str | None = None  # e.g. "speaker_1"；None = 未做说话人分离
+
+    @property
+    def duration(self) -> float:
+        return max(0.0, self.end - self.start)
+
+    def shifted(self, offset: float) -> Segment:
+        """把分片内的相对时间轴平移成整段音频的绝对时间轴。"""
+        return Segment(
+            start=self.start + offset,
+            end=self.end + offset,
+            text=self.text,
+            words=[
+                Word(w.text, w.start + offset, w.end + offset, w.probability) for w in self.words
+            ],
+        )
+
+
+@dataclass
+class Chunk:
+    """切片计划里的一片。切片是重试与落盘的唯一单位。"""
+
+    index: int
+    start: float
+    end: float
+
+    @property
+    def duration(self) -> float:
+        return max(0.0, self.end - self.start)
+
+
+@dataclass
+class TranscriptResult:
+    """一个引擎对一段音频的转写结果。"""
+
+    text: str
+    segments: list[Segment] = field(default_factory=list)
+    language: str | None = None
+    audio_seconds: float | None = None
+    cost_usd: float | None = None
+    engine: str = ""
+    has_timestamps: bool = False
+
+    def shifted(self, offset: float) -> TranscriptResult:
+        return TranscriptResult(
+            text=self.text,
+            segments=[s.shifted(offset) for s in self.segments],
+            language=self.language,
+            audio_seconds=self.audio_seconds,
+            cost_usd=self.cost_usd,
+            engine=self.engine,
+            has_timestamps=self.has_timestamps,
+        )
+
+
+@dataclass
+class AudioInfo:
+    """ffprobe 看到的事实。"""
+
+    path: Path
+    duration: float
+    size_bytes: int
+    codec: str | None
+    sample_rate: int | None
+    channels: int | None
+    has_audio: bool
+
+    @property
+    def megabytes(self) -> float:
+        return self.size_bytes / 1_000_000
+
+
+def fmt_timestamp(seconds: float, *, sep: str = ",") -> str:
+    """秒 → SRT 时间戳（HH:MM:SS,mmm）。"""
+    seconds = max(0.0, float(seconds))
+    ms = int(round((seconds - math.floor(seconds)) * 1000))
+    total = math.floor(seconds)
+    if ms == 1000:  # 四舍五入进位
+        total += 1
+        ms = 0
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}{sep}{ms:03d}"

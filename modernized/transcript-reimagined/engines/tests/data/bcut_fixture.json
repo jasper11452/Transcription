@@ -1,0 +1,289 @@
+{
+  "create": {
+    "per_size": 5242880,
+    "upload_urls_count": 1
+  },
+  "complete": {
+    "download_url": "http://jssz-boss.bilibili.co/rubick/biz388087788244860681/AIA637431568129894540.MP3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ef42ae0361985232%2F20260915%2Fjssz%2Fs3%2Faws4_request&X-Amz-Date=20260915T103342Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&X-Amz-Signature=db612057e8d7d988815d4e90a7f76e795200720eb54db0375b97712c9b824ea1"
+  },
+  "task": {
+    "task_id": "4db815e868924df7b28e5963d9dd9e5d"
+  },
+  "result_state": 4,
+  "result": {
+    "utterances": [
+      {
+        "start_time": 0,
+        "end_time": 1900,
+        "transcript": "转录工具冒烟测试",
+        "punc": 0.14,
+        "music": 0,
+        "words": [
+          {
+            "label": "转",
+            "start_time": 0,
+            "end_time": 240
+          },
+          {
+            "label": "录",
+            "start_time": 240,
+            "end_time": 400
+          },
+          {
+            "label": "工",
+            "start_time": 440,
+            "end_time": 640
+          },
+          {
+            "label": "具",
+            "start_time": 640,
+            "end_time": 840
+          },
+          {
+            "label": "冒",
+            "start_time": 880,
+            "end_time": 1080
+          },
+          {
+            "label": "烟",
+            "start_time": 1080,
+            "end_time": 1280
+          },
+          {
+            "label": "测",
+            "start_time": 1320,
+            "end_time": 1520
+          },
+          {
+            "label": "试",
+            "start_time": 1560,
+            "end_time": 1760
+          }
+        ]
+      },
+      {
+        "start_time": 1900,
+        "end_time": 3900,
+        "transcript": "今天讨论三件事",
+        "punc": 0.977,
+        "music": 0,
+        "words": [
+          {
+            "label": "今",
+            "start_time": 2040,
+            "end_time": 2280
+          },
+          {
+            "label": "天",
+            "start_time": 2280,
+            "end_time": 2480
+          },
+          {
+            "label": "讨",
+            "start_time": 2560,
+            "end_time": 2760
+          },
+          {
+            "label": "论",
+            "start_time": 2760,
+            "end_time": 2960
+          },
+          {
+            "label": "三",
+            "start_time": 3040,
+            "end_time": 3240
+          },
+          {
+            "label": "件",
+            "start_time": 3240,
+            "end_time": 3440
+          },
+          {
+            "label": "事",
+            "start_time": 3520,
+            "end_time": 3720
+          }
+        ]
+      },
+      {
+        "start_time": 3900,
+        "end_time": 6510,
+        "transcript": "第一，离线转写的质量",
+        "punc": 0.995,
+        "music": 0,
+        "words": [
+          {
+            "label": "第",
+            "start_time": 4080,
+            "end_time": 4280
+          },
+          {
+            "label": "一",
+            "start_time": 4280,
+            "end_time": 4520
+          },
+          {
+            "label": "，",
+            "start_time": 4520,
+            "end_time": 4520
+          },
+          {
+            "label": "离",
+            "start_time": 4810,
+            "end_time": 5010
+          },
+          {
+            "label": "线",
+            "start_time": 5010,
+            "end_time": 5210
+          },
+          {
+            "label": "转",
+            "start_time": 5290,
+            "end_time": 5490
+          },
+          {
+            "label": "写",
+            "start_time": 5570,
+            "end_time": 5770
+          },
+          {
+            "label": "的",
+            "start_time": 5770,
+            "end_time": 5970
+          },
+          {
+            "label": "质",
+            "start_time": 5970,
+            "end_time": 6130
+          },
+          {
+            "label": "量",
+            "start_time": 6130,
+            "end_time": 6330
+          }
+        ]
+      },
+      {
+        "start_time": 6510,
+        "end_time": 9090,
+        "transcript": "第二，再现字幕的生成",
+        "punc": 0.992,
+        "music": 0,
+        "words": [
+          {
+            "label": "第",
+            "start_time": 6690,
+            "end_time": 6890
+          },
+          {
+            "label": "二",
+            "start_time": 6890,
+            "end_time": 7090
+          },
+          {
+            "label": "，",
+            "start_time": 7090,
+            "end_time": 7090
+          },
+          {
+            "label": "再",
+            "start_time": 7450,
+            "end_time": 7650
+          },
+          {
+            "label": "现",
+            "start_time": 7690,
+            "end_time": 7890
+          },
+          {
+            "label": "字",
+            "start_time": 7970,
+            "end_time": 8170
+          },
+          {
+            "label": "幕",
+            "start_time": 8170,
+            "end_time": 8330
+          },
+          {
+            "label": "的",
+            "start_time": 8330,
+            "end_time": 8530
+          },
+          {
+            "label": "生",
+            "start_time": 8530,
+            "end_time": 8690
+          },
+          {
+            "label": "成",
+            "start_time": 8690,
+            "end_time": 8890
+          }
+        ]
+      },
+      {
+        "start_time": 9130,
+        "end_time": 11690,
+        "transcript": "第三，专有名词的校对",
+        "punc": 0.95,
+        "music": 0,
+        "words": [
+          {
+            "label": "第",
+            "start_time": 9330,
+            "end_time": 9530
+          },
+          {
+            "label": "三",
+            "start_time": 9570,
+            "end_time": 9770
+          },
+          {
+            "label": "，",
+            "start_time": 9770,
+            "end_time": 9770
+          },
+          {
+            "label": "专",
+            "start_time": 10170,
+            "end_time": 10370
+          },
+          {
+            "label": "有",
+            "start_time": 10370,
+            "end_time": 10570
+          },
+          {
+            "label": "名",
+            "start_time": 10610,
+            "end_time": 10810
+          },
+          {
+            "label": "词",
+            "start_time": 10850,
+            "end_time": 11010
+          },
+          {
+            "label": "的",
+            "start_time": 11010,
+            "end_time": 11210
+          },
+          {
+            "label": "校",
+            "start_time": 11210,
+            "end_time": 11410
+          },
+          {
+            "label": "对",
+            "start_time": 11410,
+            "end_time": 11690
+          }
+        ]
+      }
+    ],
+    "statusCode": 0,
+    "version": "1.2.0"
+  }
+}

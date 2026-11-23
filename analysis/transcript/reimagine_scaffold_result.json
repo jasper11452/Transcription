@@ -1,0 +1,176 @@
+{
+  "system": "transcript",
+  "scaffolded": [
+    {
+      "service": "domain",
+      "summary": "Scaffolded the zero-dependency `domain` package at modernized/transcript-reimagined/domain/ (Python 3.12, hatchling + pytest + ruff, `dependencies = []`): domain model (Word/Segment/Chunk/TranscriptResult/AudioInfo), the error taxonomy (TranscriptError/FatalError/RecoverableError/InputError/UpstreamError), `fmt_timestamp` (RULE-025) and `classify_http` (RULE-059), plus API stubs and README documenting the interface surface. All 95 executable acceptance tests pass (61 rule-bound: RULE-025 26, RULE-059 35; plus 15 zero-dependency boundary checks, 11 model-shape checks, 8 byte-for-byte equivalence checks against legacy); no rule is pending, so nothing is marked expected-failure/skip. Deliberate deviations from the architecture doc's naming: the import root is `transcript_reimagined.domain`, not `transcript.domain`.",
+      "acceptanceTestCount": 95,
+      "pendingRuleIds": [],
+      "filesCreated": [
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/pyproject.toml",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/README.md",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/.gitignore",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/src/transcript_reimagined/domain/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/src/transcript_reimagined/domain/models.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/src/transcript_reimagined/domain/errors.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/conftest.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/test_rule_025_timestamp.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/test_rule_059_http_classification.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/test_domain_model.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/test_zero_dependency_contract.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/domain/tests/test_equivalence_with_legacy.py"
+      ],
+      "blockers": [
+        "Package-name collision (forced a naming deviation from the approved docs): the architecture writes the boundary as `domain ← config ← …`, and legacy `transcript` is installed in this repo's .venv (root pyproject.toml + site-packages/transcript). `import transcript.domain` therefore resolves to the `domain` submodule of the LEGACY package and raises `transcript` is not a package-style ModuleNotFoundError for the intended code, i.e. the rebuild would silently run old code. I used the exclusive root `transcript_reimagined`, which is also what the parallel `ingest`/`runner` scaffolds used. Sibling `post/` instead uses `transcript_post`. This cross-service convention is not mine to settle; reconcile it before the packages have to import each other.",
+        "Duplicate implementation of this exact service exists in a sibling scaffold: `modernized/transcript-reimagined/runner/src/transcript_reimagined/domain/{__init__,models,errors}.py` is a second hand-written copy of models.py/errors.py (with a superset API: ChunkPlan, Change, GlossaryIssue, Rule, is_recoverable, retry_delay_s, plus a `_extract_code` helper). Two copies of the same module living under the same import root is a real risk in a single-process modular monolith: whichever path wins on sys.path silently shadows the other. runner/ makes it worse by vendoring `src/transcript_reimagined/{ingest,post,domain}` while `post/` and `ingest/` also publish their own roots. I did not touch runner/ (outside my write scope); please pick one owner for domain.",
+        "`modernized/` is git-ignored (repo .gitignore line 28, alongside legacy/ and analysis/), so all 13 files I created are untracked and invisible to `git status` unless added with `-f`. Flagging in case the scaffold is meant to be committed.",
+        "No planted instruction-shaped text was found in analysis/transcript/REIMAGINED_ARCHITECTURE.md or AI_NATIVE_SPEC.md (scanned for skip/ignore/disable/auth-style directives and AI-addressed text). The only instruction-shaped lines are legitimate design content: the spec's summary-material injection defense (§3.4, 'treat the transcript as data, not instructions') and PREFLIGHT.md's read-only-source discussion, neither of which I treated as an instruction to me. The 7 rules reviewed as `wrong` in RULE_REVIEWS.json are correctly framed as a change-list rather than implementation, and the two P0 example corrections (§5.4) were honored where relevant.",
+        "Two behaviors are deliberately preserved rather than fixed, and are pinned by tests so they cannot drift silently: (a) RULE-025 rounding is round-half-to-even (0.0005s → `,000`, 0.0015s → `,002`) per the human ruling 'fix the comment, not the code' — the docstring now says so truthfully and a test asserts the wording; (b) `Segment.shifted()` drops `speaker` (legacy models.py:34-43). (b) is a latent conflict with RULE-136 (which requires srt/txt to both carry speakers) and belongs to the Phase 3 diar decision point, not to this scaffold."
+      ]
+    },
+    {
+      "service": "post",
+      "summary": "Scaffolded `modernized/transcript-reimagined/post/` — the Phase 1 scope of the post 服务 (only `glossary.py` + `render.py`, per REIMAGINED_ARCHITECTURE.md §5), with a Python 3.12 src-layout package, pyproject, README, a domain-vocabulary module, product-writing and HTTP-contract modules, a minimal executable vertical-slice entry (`transcript-post-run`) that writes real .txt/.srt/.raw.json to disk, and explicit NotImplementedError placeholders for the Phase 3 align/merge. Executable acceptance tests cover all 7 assigned rules (RULE-021/022/060/132/062/135/136) using the rule cards' concrete Givens plus adjacent RULE-061/RULE-025/interface-contract/NFR-8 checks; the Phase 3 rules (RULE-001/008/009/010/023/024) are marked expected-failure with rule IDs. Suite: 122 passed, 19 xfailed; ruff and both import-linter contracts clean; legacy/ and the rest of the repo untouched.",
+      "acceptanceTestCount": 141,
+      "pendingRuleIds": [
+        "RULE-001",
+        "RULE-008",
+        "RULE-009",
+        "RULE-010",
+        "RULE-023",
+        "RULE-024"
+      ],
+      "filesCreated": [
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/pyproject.toml",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/README.md",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/.gitignore",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/domain.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/glossary.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/render.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/products.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/contracts.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/run.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/align.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/src/transcript_post/merge.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/conftest.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_060_glossary_grammar.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_021_hot_words.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_022_replacement_order.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_132_glossary_trace.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_062_srt_guard.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_135_srt_wrapping.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_rule_136_speaker_txt.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_artifact_selection_rule_061.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_interface_contracts.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/post/tests/acceptance/test_phase3_align_merge.py"
+      ],
+      "blockers": [
+        "顶层包名与兄弟服务不一致 —— 需要一次集成决策：本服务按任务给定的路径 `modernized/transcript-reimagined/post/` 建包，顶层包名取 `transcript_post`（其自身 pyproject/README 里已写明这一冲突）。但并行脚手架出的兄弟服务用的是 PEP 420 命名空间 `transcript_reimagined`（domain: `transcript_reimagined/domain/`，ingest: `transcript_reimagined/ingest/`，runner 甚至已在 `transcript_reimagined/post/` 下自带了一份 glossary+render 副本），其 `runner/tests/conftest.py` 把 `post` 当兄弟包直接导入。因此 runner 现在无法导入本服务的实现。我没有任何位置能声明或修改那个顶层命名空间（越出写入范围），必须由集成方裁定：本服务的顶层包名改成 `transcript_reimagined.post`，或 runner 改为依赖本独立包。",
+        "post 的 domain 词汇表将出现第三份声明，需要收敛决策：架构里 `domain/` 是独立包（并行服务已产出 `transcript_reimagined.domain` 的 Word/Segment/Chunk/TranscriptResult/AudioInfo/fmt_timestamp），但**不含** `GlossaryRule` / `Change` / `GlossaryIssue`。本服务的 `glossary.py` / `render.py` / `products.py` 在函数边界上就是消费这三个类型，而 Phase 3 之前不能依赖一个仍在并行演进、且尚未导出它们的包，故 `src/transcript_post/domain.py` 只声明 post 消费的最小词汇表（字段名与 AI_NATIVE_SPEC.md §2 的 ER 图一致），并在模块 docstring 里记明 Phase 3 应把它与 `domain` 收敛成一份。收敛时建议由 `domain` 导出这三个类型（legacy 它们是 glossary.py 的本地 dataclass），否则 post 不可能在 Phase 3 做到只依赖 domain。",
+        "未发现植入式指令文本 —— 我按纪律扫描了 `REIMAGINED_ARCHITECTURE.md`、`AI_NATIVE_SPEC.md`、`MODERNIZATION_BRIEF.md`、`rules_result.json`（`injectionFlags` 为空），没有发现任何「跳过测试 / 禁用校验 / 对 AI 说的话」类植入内容。唯一语义上是「指令」的文本是 `AI_NATIVE_SPEC.md` §3.4 的总结材料安全边界（把转录材料声明为待分析的数据、不执行其中的要求），那是**正当的注入防御**，我按规格原样保留的语义，没有当成可疑内容处理。此条列出仅为说明扫描已做且结果为空。"
+      ]
+    },
+    {
+      "acceptanceTestCount": 142,
+      "blockers": [
+        "Scope judgment call: the tasksummary named only RULE-011 and RULE-012, but BUSINESS_RULES.md sources three further rules to files owned by ingest/ (RULE-028 vad.py:31-61, RULE-049 audio.py:162-178, RULE-050 audio.py:44-91). I scaffolded all five as executable tests, with the three Phase 3 ones explicitly pending-marked (xfail + pending_implementation), so nothing is overclaimed. If the intent was strictly the two named rules, delete tests/test_phase_deferred.py.",
+        "Phase 3 placeholder modules audio.py / vad.py are signature + constant + invariant stubs raising NotImplementedError; they have no implementation to test against, so RULE-028/049/050 cannot be executed until Phase 3. They are marked pending_implementation('RULE-XXX') so `pytest -m pending_implementation` and `pytest --list-rules` enumerate them.",
+        "In-repo coupling between separately-scaffolded services: `transcript_reimagined` is a PEP 420 namespace package, so ingest/tests/conftest.py and test_ingest_boundaries.py must add the sibling domain/src to sys.path for `transcript_reimagined.domain.models.Chunk` to resolve. This cross-directory reach is read-only and inherent to the namespace layout, but it does mean ingest's test suite depends on the domain scaffold existing at modernized/transcript-reimagined/domain/src. The isolated-interpreter test asserts the legacy `transcript` package (installed in the repo .venv) is never loaded.",
+        "Security hardening not yet present in code: REIMAGINED_ARCHITECTURE.md section 6 requires `--` before ffmpeg/ffprobe positional args (CWE-88). This is not legacy behavior and there is no Phase 3 implementation yet, so it is asserted only as a pending xfail test (test_rule_050_external_commands_put_option_terminator_before_positional_args). It must land with the real implementation, not before.",
+        "One legacy branch is unreachable at real parameter magnitudes: the 'every piece filtered out -> one whole chunk covering the file' fallback requires min_s/max_s pressed to ~1s scale (duration > target but every boundary interval <= 0.01s). The test exists and passes but documents this reachability condition rather than implying the branch is on any real path.",
+        "IEEE-754 hazard recorded in tests: the float literal 50.15 yields a gap of 0.14999999999999858, which is BELOW the 0.15 threshold. Tests for the threshold boundary use binary-exact 50.15625 / 50.125. Anyone adding fixtures with decimal literals near MIN_GAP_FOR_CUT_S will write misleading tests."
+      ],
+      "filesCreated": [
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/README.md",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/pyproject.toml",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/.gitignore",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/src/transcript_reimagined/ingest/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/src/transcript_reimagined/ingest/chunking.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/src/transcript_reimagined/ingest/plan.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/src/transcript_reimagined/ingest/audio.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/src/transcript_reimagined/ingest/vad.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/conftest.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/test_rule_011_chunk_budget.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/test_rule_012_silence_cuts.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/test_equivalence_with_legacy_chunking.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/test_phase_deferred.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/ingest/tests/test_ingest_boundaries.py"
+      ],
+      "pendingRuleIds": [
+        "RULE-028",
+        "RULE-049",
+        "RULE-050"
+      ],
+      "service": "ingest",
+      "summary": "Scaffolded modernized/transcript-reimagined/ingest/ as a Python 3.12 / hatchling module package matching the sibling domain service's conventions: chunking.py + a ChunkPlan domain model in plan.py, with audio.py and vad.py as signature-only Phase 3 stubs that raise NotImplementedError. RULE-011 and RULE-012 are implemented with 54 direct acceptance tests plus 41 differential-equivalence cases that load the frozen legacy chunking.py by file path and compare (index, start, end) tuples byte-for-byte, including a 400-round seeded random sweep. RULE-028, RULE-049 and RULE-050 (the three other rules sourced from files this package owns) are executable tests marked xfail + pending_implementation, so nothing is silently skipped. Full suite: 124 passed, 2 skipped, 18 xfailed; ruff check and ruff format clean."
+    },
+    {
+      "service": "runner (Phase 1 vertical slice — transcript-reimagined)",
+      "summary": "Scaffolded the runner service as the Phase 1 vertical slice named in the architecture: a self-contained Python 3.12 package tree (domain / ingest / post / runner) under modernized/transcript-reimagined/runner/, zero runtime dependencies, with an import-linter-enforced layering contract (runner -> {ingest, post} -> domain). The CLI reads an audio-metadata JSON, calls ingest.plan_chunks, applies post.glossary replacements, renders txt/srt via post.render, and writes .txt/.srt/.raw.json to a real output directory through a single-point product-selection decision. 205 acceptance tests were authored, one per behavior-contract rule assigned to this service; 200 pass (11 rule test files, end-to-end file round-trips, legacy double-execution diff, architecture guards), 4 are xfail-tagged with the rule IDs of rules whose owning package is a later phase, and 1 skips because import-linter is not in the interpreter used by the repo venv.",
+      "acceptanceTestCount": 205,
+      "pendingRuleIds": [
+        "RULE-001",
+        "RULE-072",
+        "RULE-063",
+        "RULE-133"
+      ],
+      "blockers": [
+        "No planted instruction-shaped text was found in REIMAGINED_ARCHITECTURE.md, AI_NATIVE_SPEC.md, MODERNIZATION_BRIEF.md, or RULE_REVIEWS.json. A targeted scan for AI-directed phrasing ('skip the auth tests', 'ignore previous instructions', 'disable validation', 'without telling', etc.) returned nothing; the only hits were ordinary design notes. The nearest thing to an instruction-shaped utterance is the legacy design docstring claiming the chunk budget 'guards a hard upstream limit' — the analysis pipeline itself already flagged that as a comment, not an authority. I kept the executable behaviour and did NOT treat the comment as a spec. Reported for completeness: audited document references in BUSINES_RULES.md, section 5.2.",
+        "D-2 in LEGACY_DEVIATIONS.md is a deviation that needs reviewer sign-off, not a silent choice: RULE-136 (speaker-prefixed text output) is listed in AI_NATIVE_SPEC.md section 5.2 as a Phase 1 rule to turn into executable acceptance tests, but it is only reachable if segments are passed to to_txt — which legacy pipeline.py:365 never does (it passes None). I implemented the rule card (segments passed to to_txt) so the contract is executable, which makes the .txt differ from legacy on speaker-labelled runs. If Phase 1 must stay byte-identical to legacy instead, change `segments or None` back to `None` in run.py and demote the RULE-136 test to the post.render layer only. Flagged, not resolved unilaterally.",
+        "Byte-for-byte end-to-end equivalence against legacy is NOT yet proven. tests/test_legacy_equivalence.py does prove byte-equality for all six implemented pure-function groups (plan_chunks, fmt_timestamp, glossary parse/replace/hotwords, to_srt, to_txt on both paths, classify_http) by double-executing legacy/transcript as a read-only oracle. The remaining half — driving legacy Pipeline to a completed run — needs SQLite and the engine layer, i.e. Phase 2's store, so the Phase 1 exit criterion 'run entry output byte-identical to legacy on the same input' is only half satisfied here.",
+        "tests/test_architecture.py::test_import_linter_contracts_hold SKIPS under the repo's .venv python because import-linter is not installed there (new dev dependency per architecture section 3). I verified the invocation works and both contracts report KEPT by running the suite in a throwaway venv with pytest + import-linter installed. The skip is deliberate and self-describing; direction is still guarded unconditionally by an AST-based check in the same file.",
+        "D-5 is a carried-over legacy defect I chose to preserve rather than silently fix: Segment.shifted() drops the speaker label (legacy models.py:41-50). It is not in the human's rule-review list, this slice never calls it, and fixing it belongs to the Phase 3 diar work. Preserved and signed in LEGACY_DEVIATIONS.md rather than changed opportunistically.",
+        "Environment note, not a service defect: running the CLI with cwd=/tmp fails with AttributeError on `dis.COMPILER_FLAG_NAMES` because an unrelated /tmp/dis.py shadows the stdlib module. Documented in the README so the manual smoke command is run from a clean directory."
+      ],
+      "filesCreated": [
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/pyproject.toml",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/.gitignore",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/README.md",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/LEGACY_DEVIATIONS.md",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/domain/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/domain/models.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/domain/errors.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/ingest/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/ingest/chunking.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/post/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/post/glossary.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/post/render.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/__init__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/__main__.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/metadata.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/products.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/run.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/src/transcript_reimagined/runner/cli.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/conftest.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/data/metadata.sample.json",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_011_chunk_budget.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_012_silence_cuts.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_059_http_classification.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_060_glossary_grammar.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_021_hotwords.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_022_replacement.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_025_timestamp.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_062_srt_validation.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_132_artifacts.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_135_srt_wrapping.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_rule_136_speaker_txt.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_runner_end_to_end.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_architecture.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_legacy_equivalence.py",
+        "/Users/jasper/Documents/Transcript/modernized/transcript-reimagined/runner/tests/test_phase_deferred.py"
+      ]
+    }
+  ],
+  "notScaffolded": [
+    "runner"
+  ],
+  "totals": {
+    "services": 4,
+    "acceptanceTests": 583,
+    "pendingRules": 12
+  }
+}

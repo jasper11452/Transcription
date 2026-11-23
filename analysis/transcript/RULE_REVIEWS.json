@@ -1,0 +1,78 @@
+{
+  "system": "transcript",
+  "version": 1,
+  "reviews": {
+    "RULE-001": {
+      "verdict": "confirmed",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Deduplicate only at chunk boundaries and never drop content",
+      "note": "对，就这么做"
+    },
+    "RULE-072": {
+      "verdict": "confirmed",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Task and chunk status lifecycle; no partial products",
+      "note": "对，就这么做"
+    },
+    "RULE-061": {
+      "verdict": "confirmed",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "An srt task is refused when the engine cannot supply timestamps",
+      "note": "对，但顺手补齐。artifact=txt 时不该写 .srt"
+    },
+    "RULE-040": {
+      "verdict": "confirmed",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Saving secrets: a blank field keeps the stored secret and a masked preview is n…",
+      "note": "对，保持现状。api.ts 这层设计正确，是 main.tsx 绕过了它"
+    },
+    "RULE-081": {
+      "verdict": "confirmed",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "A running task with no live process is reported as interrupted, not as running",
+      "note": "对，但需去重。同一套推导在三个地方重复，重写时只留一处"
+    },
+    "RULE-043": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Credential save/clear payload: empty input still saves an empty key",
+      "note": "不对，这是缺陷。空输入应当是无操作，不是写入空值"
+    },
+    "RULE-031": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Model list filtering and display cap of 60",
+      "note": "不对，这是缺陷。60 条上限在计数之前生效，匹配项可能滚不到"
+    },
+    "RULE-129": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Offline fallback when no timeline can be produced re-runs the same call and is…",
+      "note": "不对，这是死分支。重写时词级时间轴只算一次，让 align 报告退化原因"
+    },
+    "RULE-007": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Only completed chunks feed the live subtitle/text view",
+      "note": "不对，这是缺陷。已完成分片同时带 segments 与 text 时 text 被静默丢弃"
+    },
+    "RULE-042": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Audio source is required and an attached file beats a typed path",
+      "note": "不对，这是缺陷。前端缺守卫，没来源的误提交要多跑一趟服务端"
+    },
+    "RULE-093": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Stop is not applied optimistically; row state changes only on the next poll",
+      "note": "不对，这是缺陷。点击到反馈之间没有任何回应，且与 task.tsx 不一致"
+    },
+    "RULE-105": {
+      "verdict": "wrong",
+      "at": "2026-10-17T15:19:18+08:00",
+      "title": "Configuration precedence and legacy settings compatibility",
+      "note": "不对，这是缺陷。数值解析吞 ValueError，CHUNK_MAX_S=12O 这类手误静默回退默认值"
+    }
+  }
+}
