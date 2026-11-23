@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#0a0a0a" />
     <title>转录 · Transcript</title>
@@ -46,7 +47,7 @@
 
     <!-- 主区：只留办事的表单，宽度收窄到单栏 -->
     <div class="flex min-h-0 flex-1 flex-col">
-      <main id="main" class="mx-auto w-full max-w-5xl flex-1 px-5 pb-24 sm:px-8">
+      <main id="main" tabindex="-1" class="mx-auto w-full max-w-5xl flex-1 px-5 pb-24 sm:px-8">
         <div class="max-w-2xl pt-9 sm:pt-12">
           <h1 class="text-2xl leading-8 tracking-heading">新建转录</h1>
 
@@ -64,6 +65,7 @@
                 name="file"
                 type="file"
                 accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.flac,.ogg,.mp4,.mov"
+                aria-describedby="fileHint"
                 class="sr-only"
               />
             </label>
@@ -75,6 +77,11 @@
                 name="source_path"
                 type="text"
                 placeholder="/Users/you/meeting.m4a"
+                autocomplete="off"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
                 class="h-10 min-w-56 flex-1 rounded-lg border border-hairline bg-canvas-soft px-3 text-sm text-foreground transition-colors placeholder:text-mute focus:border-canvas-mid focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
@@ -86,6 +93,7 @@
                   id="modeLever"
                   role="radiogroup"
                   aria-label="模式"
+                  aria-describedby="modeHint"
                   class="relative flex w-[156px] rounded-full border border-hairline bg-canvas-soft p-[3px]"
                 >
                   <span class="mode-thumb" aria-hidden="true"></span>
@@ -113,7 +121,7 @@
 
             <p id="modeHint" class="mt-3 text-sm text-mute">本机跑，不联网，不花钱。</p>
             <p id="formError" role="alert" hidden class="mt-2 text-sm text-destructive"></p>
-            <p id="estimateHint" hidden class="mt-2 font-mono text-xs text-mute"></p>
+            <p id="estimateHint" role="status" hidden class="mt-2 font-mono text-xs text-mute"></p>
 
             <!-- 密钥只在设置页维护：主表单不再出现第二套凭据入口 -->
 
@@ -134,7 +142,7 @@
 
                 <div id="engineField" hidden class="space-y-2.5">
                   <label for="onlineEngine" class="eyebrow-mono">引擎</label>
-                  <select id="onlineEngine" class="field-select h-10 w-full rounded-lg border border-hairline bg-canvas-soft py-2 pl-4 pr-10 text-sm text-foreground focus:border-canvas-mid focus:outline-none">
+                  <select id="onlineEngine" aria-describedby="engineHint" class="field-select h-10 w-full rounded-lg border border-hairline bg-canvas-soft py-2 pl-4 pr-10 text-sm text-foreground focus:border-canvas-mid focus:outline-none">
                   </select>
                   <p id="engineHint" class="text-xs leading-5 text-mute"></p>
                 </div>
@@ -144,10 +152,10 @@
           </form>
 
           <!-- 热词库：只读展示，增删改去设置页；分组来自词表里的 `## 组名` -->
-          <section id="hotWordsSection" hidden aria-label="热词库" class="mt-10 border-t border-hairline pt-6">
+          <section id="hotWordsSection" hidden aria-labelledby="hotWordsTitle" class="mt-10 border-t border-hairline pt-6">
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <div>
-                <p class="text-sm text-body">热词库</p>
+                <h2 id="hotWordsTitle" class="text-sm text-body">热词库</h2>
                 <p id="hotWordsMeta" class="mt-1 text-xs text-mute">正在读取…</p>
               </div>
               <a href="/settings" class="text-xs text-mute underline-offset-4 transition-colors hover:text-ink hover:underline">管理热词</a>
@@ -156,8 +164,8 @@
           </section>
 
           <!-- 首次使用：没有任务时说明离线模型、产物位置和在线密钥，不放空话 -->
-          <section id="firstRun" hidden aria-label="首次使用说明" class="mt-10 border-t border-hairline pt-6">
-            <p class="text-sm text-body">第一次使用</p>
+          <section id="firstRun" hidden aria-labelledby="firstRunTitle" class="mt-10 border-t border-hairline pt-6">
+            <h2 id="firstRunTitle" class="text-sm text-body">第一次使用</h2>
             <ul class="mt-3 space-y-2 text-sm leading-6 text-mute">
               <li>离线转录在本机跑，音频不出本机。首次运行会加载模型，可能需要下载权重，稍等一会儿。</li>
               <li>产物写在源文件旁边：同名 <span class="font-mono text-[13px] text-body">.txt</span> 和 <span class="font-mono text-[13px] text-body">.srt</span>。</li>

@@ -82,10 +82,10 @@ function HotWordsPanel() {
       <div className="space-y-4">
         {visible.map((group) => (
           <div key={group.name || '__ungrouped'}>
-            <p className="group-label flex items-baseline gap-2">
+            <h3 className="group-label flex items-baseline gap-2">
               {group.name || '未分组'}
               <span className="font-mono text-[11px] text-mute">{group.words.length}</span>
-            </p>
+            </h3>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {group.words.map((word) => (
                 <li
@@ -275,7 +275,7 @@ export default function ConsoleApp() {
       hint.textContent = f ? f.name + ' · ' + (f.size / 1024 / 1024).toFixed(1) + ' MB' : idle
       const preview = document.getElementById('mediaPreview')
       if (!preview) return
-      preview.innerHTML = ''
+      preview.replaceChildren()
       if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = '' }
       if (!f) { preview.hidden = true; return }
       objectUrl = URL.createObjectURL(f)

@@ -134,22 +134,45 @@ export function HistorySidebar({ currentId }: { currentId?: number }) {
 
   useEffect(() => {
     let alive = true
-    let timer: ReturnType<typeof setTimeout>
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let inFlight = false
+    const schedule = (ms: number) => {
+      if (timer !== undefined) clearTimeout(timer)
+      timer = undefined
+      if (!alive || document.hidden) return
+      timer = setTimeout(tick, ms)
+    }
     const tick = async () => {
+      if (!alive || inFlight) return
+      inFlight = true
+      let delay = 10000
       try {
         const list = await fetchTasks(50)
         if (!alive) return
         setTasks(list)
         const busy = list.some((t) => t.running || t.cancelling || !t.is_terminal)
-        timer = setTimeout(tick, busy ? 2000 : 10000)
+        delay = busy ? 2000 : 10000
       } catch {
-        if (alive) timer = setTimeout(tick, 10000)
+        delay = 10000
+      } finally {
+        inFlight = false
       }
+      if (alive) schedule(delay)
     }
-    tick()
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (timer !== undefined) clearTimeout(timer)
+        timer = undefined
+        return
+      }
+      void tick()
+    }
+    if (!document.hidden) void tick()
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       alive = false
-      clearTimeout(timer)
+      if (timer !== undefined) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 
@@ -268,10 +291,11 @@ export function HistorySidebar({ currentId }: { currentId?: number }) {
         <p role="alert" className="mb-2 rounded-lg border border-destructive/40 px-3 py-2 text-xs leading-5 text-destructive [overflow-wrap:anywhere]">{actionError}</p>
       )}
       {showSearch && (
-        <div className="sticky top-0 z-10 hidden bg-canvas pb-2 lg:block">
+        <search aria-label="历史任务搜索" className="sticky top-0 z-10 hidden bg-canvas pb-2 lg:block">
           <input
             ref={searchRef}
             type="search"
+            name="history-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -281,9 +305,14 @@ export function HistorySidebar({ currentId }: { currentId?: number }) {
             }}
             placeholder="搜索任务…（/）"
             aria-label="搜索历史任务"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            enterKeyHint="search"
             className="h-9 w-full rounded-lg border border-hairline bg-canvas-soft px-3 text-sm text-foreground placeholder:text-mute focus:border-canvas-mid focus:outline-none"
           />
-        </div>
+        </search>
       )}
       {tasks === null ? (
         <p className="flex items-center gap-2 px-3 py-2 text-sm text-mute">

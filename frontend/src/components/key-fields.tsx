@@ -44,19 +44,19 @@ export function KeyFieldsPanel({
       <div className="divide-y divide-hairline">
         {fields.map((f) => (
           <div key={f.attr} className="flex flex-wrap items-center gap-x-5 gap-y-3 py-4 first:pt-0 last:pb-0">
-            <div className="w-44 shrink-0">
-              <p className="text-sm text-ink">{f.label}</p>
-              <p className="mt-1 font-mono text-[11px] tracking-[0.08em] text-mute">{f.env}</p>
-            </div>
+            <label htmlFor={`key-${f.attr}`} className="w-44 shrink-0">
+              <span className="block text-sm text-ink">{f.label}</span>
+              <span className="mt-1 block font-mono text-[11px] tracking-[0.08em] text-mute">{f.env}</span>
+            </label>
             <Badge variant="outline" className={f.configured ? 'text-ink' : 'text-mute'}>
               <span className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', f.configured ? 'bg-ink' : 'bg-mute')} />
               {f.configured ? `已配置 ${f.masked}` : '未配置'}
             </Badge>
             <Input
+              id={`key-${f.attr}`}
               type="password"
               autoComplete="off"
               className="w-64"
-              aria-label={`${f.label} 密钥`}
               placeholder="粘贴密钥"
               value={values[f.attr] ?? ''}
               onChange={(e) => setValues((v) => ({ ...v, [f.attr]: e.target.value }))}
@@ -72,7 +72,7 @@ export function KeyFieldsPanel({
           </div>
         ))}
       </div>
-      {msg && <p className="pt-3 font-mono text-xs text-mute">{msg}</p>}
+      {msg && <p role="status" className="pt-3 font-mono text-xs text-mute">{msg}</p>}
     </div>
   )
 }

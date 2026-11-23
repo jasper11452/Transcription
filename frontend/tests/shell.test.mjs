@@ -84,3 +84,17 @@ test('初始页只读展示热词库，凭据表单不在主表单里', () => {
   assert.ok(!page.includes('id="credentials"'), '初始页不再有第二套凭据入口')
   assert.ok(page.includes('href="/settings"'), '热词库给出管理入口')
 })
+
+test('两个入口在首屏前声明浅色与深色方案', () => {
+  for (const name of ENTRIES) {
+    const page = html(name)
+    assert.match(page, /<meta name="color-scheme" content="light dark" \/>/, `${name}: 原生控件跟随主题`)
+    assert.ok(page.indexOf('name="color-scheme"') < page.indexOf('/theme.js'), `${name}: 先于主题脚本声明`)
+  }
+})
+
+test('跳到主要内容后焦点落在可编程聚焦的主区', () => {
+  for (const name of ENTRIES) {
+    assert.match(html(name), /<main id="main" tabindex="-1"/, `${name}: skip link 有真实焦点目标`)
+  }
+})

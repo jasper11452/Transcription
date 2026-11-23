@@ -101,12 +101,20 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  h1, h2, h3 { text-wrap: balance; }
+  /* 总结正文是短段落，避开最后一行孤字；字幕可能有上千行，不用 pretty。 */
+  .summary-content p, .summary-bullet { text-wrap: pretty; }
   ::selection { background: var(--ink); color: var(--canvas); }
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
   * { scrollbar-width: thin; scrollbar-color: var(--canvas-mid) transparent; }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--canvas-mid); }
+  /* 支持标准 scrollbar-color 的浏览器会禁用 ::-webkit-scrollbar；
+     只在缺少标准属性时才回退到 WebKit 伪元素，避免自定义颜色被覆盖。 */
+  @supports not (scrollbar-color: auto) {
+    * { scrollbar-width: auto; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--canvas-mid); }
+  }
 }
 
 @layer components {
@@ -117,6 +125,9 @@
     background-repeat: no-repeat;
     background-position: right 14px center;
     background-size: 12px;
+  }
+  html.light .field-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23686861' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   #dropZone[data-drag='1'] { border-color: var(--ink); border-style: solid; background-color: var(--surface-hover); }
   /* 浅色画布上 #deded8 的虚线框只有 ~1.2:1，几乎看不见；提高到刚好过 3:1 的暖灰。 */
@@ -219,8 +230,10 @@
     min-height: 292px;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     background: var(--canvas-card);
   }
+  #taskList, .summary-thinking-body { scrollbar-gutter: stable; }
   .subtitle-line {
     position: relative;
     display: flex;
@@ -412,6 +425,8 @@ html[data-theme-transition]::view-transition-new(root) {
   .theme-toggle, .nav-row, #sourcePath, #language, #onlineEngine, .file-action, .skip-link, .header-action, .side-primary { min-height: 44px; }
   main button { min-height: 44px; }
   .subtitle-follow-pill { min-height: 44px; }
+  /* iOS 对小于 16px 的输入控件会自动放大页面；触屏上统一到 16px 起步。 */
+  input, select, textarea { font-size: max(16px, 1em); }
 }
 
 @media (prefers-reduced-motion: reduce) {

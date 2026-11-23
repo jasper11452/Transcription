@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger, TabUnderline } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { isImeComposing } from '@/lib/ime'
 import { boot, type ChunkItem, type HotWordGroup, type KeyField, type SubtitleLine, type SummaryModel, type SummaryPayload, type SummarySettingsPayload, type TaskDetail } from '@/lib/types'
 import { hasPartialContent, parsePartialSummary, type PartialSummary } from '@/lib/summary-stream'
 import {
@@ -404,10 +405,13 @@ function TranscriptPanel({
 
   useEffect(() => { setSaveError('') }, [task.id])
 
-  const chunkText = chunks
-    .filter((chunk) => chunk.status === 'done' && chunk.text.trim())
-    .map((chunk) => chunk.text.trim())
-    .join('\n')
+  const chunkText = useMemo(
+    () => chunks
+      .filter((chunk) => chunk.status === 'done' && chunk.text.trim())
+      .map((chunk) => chunk.text.trim())
+      .join('\n'),
+    [chunks],
+  )
   const readOnlyText = fileText || chunkText
   const isLive = task.running
 
@@ -625,9 +629,11 @@ function HotWordGroupRow({
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ',' || event.key === '，' || event.key === '、') {
+              if (isImeComposing(event.nativeEvent)) return
               event.preventDefault()
               commit()
             } else if (event.key === 'Backspace' && !draft && group.words.length) {
+              if (isImeComposing(event.nativeEvent)) return
               onRemoveWord(index, group.words[group.words.length - 1])
             }
           }}
@@ -749,6 +755,7 @@ function SummarySettingsEditor() {
   }
 
   const onModelKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (isImeComposing(event.nativeEvent)) return
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       if (!listOpen) toggleList()
@@ -884,9 +891,10 @@ function SummarySettingsEditor() {
                 placeholder="https://api.example.com/v1"
                 autoComplete="off"
                 spellCheck={false}
+                aria-describedby="summaryBaseUrlHint"
                 required
               />
-              <p className="text-xs leading-5 text-mute">OpenAI 兼容地址，与在线转录共用。请求会携带密钥，请使用可信服务。</p>
+              <p id="summaryBaseUrlHint" className="text-xs leading-5 text-mute">OpenAI 兼容地址，与在线转录共用。请求会携带密钥，请使用可信服务。</p>
             </div>
             <p className="text-xs leading-5 text-mute">
               OpenRouter 密钥在页面顶部「密钥」里维护；这里只改地址、模型与提示词。
@@ -908,6 +916,7 @@ function SummarySettingsEditor() {
                   aria-controls="summaryModelList"
                   aria-autocomplete="list"
                   aria-activedescendant={listOpen && filteredModels[highlight] ? `summaryModelOption-${highlight}` : undefined}
+                  aria-describedby="summaryModelHint"
                   className="pr-11"
                 />
                 <button
@@ -966,7 +975,7 @@ function SummarySettingsEditor() {
                   </div>
                 )}
               </div>
-              <p className="text-xs leading-5 text-mute">
+              <p id="summaryModelHint" className="text-xs leading-5 text-mute">
                 可手填，或保存连接后从下拉列表选择。
               </p>
               {modelListError && <p className="text-xs leading-5 text-mute">{modelListError}</p>}
@@ -981,8 +990,9 @@ function SummarySettingsEditor() {
                 rows={4}
                 className="resize-y font-mono text-xs leading-5"
                 placeholder="说明你希望总结重点、语气或格式…"
+                aria-describedby="summaryPromptHint"
               />
-              <p className="text-xs leading-5 text-mute">
+              <p id="summaryPromptHint" className="text-xs leading-5 text-mute">
                 输出字段是固定的：标题、主旨、要点、待办。这里的提示词只决定内容取舍、语气和语言，
                 不能改成别的结构或格式；改完需要点「重新生成」才会生效。
               </p>
@@ -1014,10 +1024,9 @@ function SummarySettingsEditor() {
                   value={newGroup}
                   onChange={(event) => setNewGroup(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      addGroup()
-                    }
+                    if (event.key !== 'Enter' || isImeComposing(event.nativeEvent)) return
+                    event.preventDefault()
+                    addGroup()
                   }}
                   maxLength={maxGroupChars}
                   placeholder="新分组名称"
@@ -1152,22 +1161,39 @@ function SummaryPanel({ task }: { task: TaskDetail['task'] }) {
     void refresh()
   }, [refresh])
 
-  // 每次拿到的是整份 partial，摘要越完整越贵：起步 700ms 逐次退到 1500ms，页面不可见时停手。
+  // 每次拿到的是整份 partial，摘要越完整越贵：起步 700ms 逐次退到 1500ms。
+  // 页面不可见时彻底停表，回来再立即补一次，避免后台每 2 秒白跑一遍。
   useEffect(() => {
     if (!summary || !['waiting', 'running'].includes(summary.status)) return
     let delay = 700
     let timer = 0
-    const poll = async () => {
-      if (document.hidden) {
-        timer = window.setTimeout(poll, 2000)
-        return
-      }
-      await refresh()
-      delay = Math.min(1500, Math.round(delay * 1.3))
-      timer = window.setTimeout(poll, delay)
+    let inFlight = false
+    const schedule = (ms: number) => {
+      window.clearTimeout(timer)
+      if (document.hidden) return
+      timer = window.setTimeout(() => { void poll() }, ms)
     }
-    timer = window.setTimeout(poll, delay)
-    return () => window.clearTimeout(timer)
+    const poll = async () => {
+      if (inFlight || document.hidden) return
+      inFlight = true
+      try {
+        await refresh()
+        delay = Math.min(1500, Math.round(delay * 1.3))
+      } finally {
+        inFlight = false
+      }
+      schedule(delay)
+    }
+    const onVisibility = () => {
+      window.clearTimeout(timer)
+      if (!document.hidden) void poll()
+    }
+    schedule(delay)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [refresh, summary?.status])
 
   const start = async () => {
@@ -1615,12 +1641,22 @@ function Detail({ initial, animate }: { initial: TaskDetail; animate: boolean })
   const failed = failedState || interrupted
   const done = t.status === 'done'
   const editable = done && t.srt_exists && !busy
-  const subtitleText = lines.length
-    ? lines.map((line) => line.text).join('\n')
-    : detail.chunks.map((chunk) => chunk.text).filter(Boolean).join('\n')
-  const changedLines = lines.filter((line, index) => line.text !== savedLines[index]?.text).length
+  // SSE 每来一个分片就会重渲染；长任务的整篇 join / 逐行对比不该跟着每次重算。
+  const subtitleText = useMemo(
+    () => lines.length
+      ? lines.map((line) => line.text).join('\n')
+      : detail.chunks.map((chunk) => chunk.text).filter(Boolean).join('\n'),
+    [lines, detail.chunks],
+  )
+  const changedLines = useMemo(
+    () => lines.filter((line, index) => line.text !== savedLines[index]?.text).length,
+    [lines, savedLines],
+  )
   const dirty = editable && changedLines > 0
-  const totalChars = t.chars ?? detail.chunks.reduce((sum, chunk) => sum + chunk.chars, 0)
+  const totalChars = useMemo(
+    () => t.chars ?? detail.chunks.reduce((sum, chunk) => sum + chunk.chars, 0),
+    [t.chars, detail.chunks],
+  )
   // 阶段化标题区要用到的进度读数（与右栏卡片同一口径）
   const totalChunks = Math.max(streamTotal, detail.chunks.length)
   const doneChunks = detail.chunks.filter((chunk) => chunk.status === 'done').length
